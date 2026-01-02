@@ -1,0 +1,17 @@
+# Fichiers compilés Java
+*.class
+
+# Dossiers de build (selon ton IDE)
+bin/
+out/
+build/
+target/
+
+# Fichiers de configuration IDE (IntelliJ, Eclipse, VS Code)
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+*.DS_Store

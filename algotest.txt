@@ -1,0 +1,9 @@
+#PYTHON
+VAR age, limite
+DEBUT
+    limite <- 18;
+    age <- 0;
+    SI age >= limite ALORS
+        ECRIRE age
+    FINSI
+FIN
