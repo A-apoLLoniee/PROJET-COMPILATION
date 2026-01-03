@@ -1,0 +1,145 @@
+===============================================================================
+                    GRAMMAIRE DU LANGAGE ALGORITHMIQUE
+===============================================================================
+
+PROGRAMME      ::= [DIRECTIVE_LANGAGE] ALGORITHME DECLARATIONS DEBUT INSTRUCTIONS FIN
+
+DIRECTIVE_LANGAGE ::= #PYTHON | #JAVA | #C
+
+ALGORITHME     ::= ALGORITHME IDENTIFICATEUR
+
+DECLARATIONS   ::= (DECL_STRUCTURE | DECL_FONCTION | SECTION_VAR)*
+
+SECTION_VAR    ::= VAR (DECL_VARIABLE)+
+
+DECL_VARIABLE  ::= LISTE_IDENTIFICATEURS : TYPE ;
+
+DECL_STRUCTURE ::= STRUCTURE IDENTIFICATEUR CHAMPS_STRUCTURE FINSTRUCTURE
+
+CHAMPS_STRUCTURE ::= (LISTE_IDENTIFICATEURS : TYPE ;)+
+
+DECL_FONCTION  ::= FONCTION IDENTIFICATEUR ( [PARAMETRES] ) : TYPE
+                   [SECTION_VAR] DEBUT INSTRUCTIONS RETOUR [EXPRESSION] FINFONCTION
+
+PARAMETRES     ::= PARAMETRE ( , PARAMETRE )*
+PARAMETRE      ::= IDENTIFICATEUR : TYPE
+
+LISTE_IDENTIFICATEURS ::= IDENTIFICATEUR ( , IDENTIFICATEUR )*
+
+TYPE           ::= TYPE_BASE | TYPE_BASE [ NOMBRE ]
+TYPE_BASE      ::= ENTIER | REEL | CHAINE | BOOLEEN | IDENTIFICATEUR
+
+===============================================================================
+                              INSTRUCTIONS
+===============================================================================
+
+INSTRUCTIONS   ::= INSTRUCTION ( ; INSTRUCTION )*
+
+INSTRUCTION    ::= AFFECTATION | CONDITION | BOUCLE_POUR | BOUCLE_TANTQUE
+                 | BOUCLE_REPETER | ECRIRE | LIRE | APPEL_FONCTION | RETOUR
+
+AFFECTATION    ::= VARIABLE <- EXPRESSION
+VARIABLE       ::= IDENTIFICATEUR [ [ EXPRESSION ] ]
+
+CONDITION      ::= SI EXPRESSION ALORS INSTRUCTIONS [ SINON INSTRUCTIONS ] FINSI
+
+BOUCLE_POUR    ::= POUR IDENTIFICATEUR <- EXPRESSION JUSQUA EXPRESSION
+                   FAIRE INSTRUCTIONS FINPOUR
+
+BOUCLE_TANTQUE ::= TANTQUE EXPRESSION FAIRE INSTRUCTIONS FINTANTQUE
+
+BOUCLE_REPETER ::= REPETER INSTRUCTIONS JUSQUA EXPRESSION
+
+ECRIRE         ::= ECRIRE EXPRESSION ( , EXPRESSION )*
+
+LIRE           ::= LIRE IDENTIFICATEUR ( , IDENTIFICATEUR )*
+
+APPEL_FONCTION ::= IDENTIFICATEUR ( [ARGUMENTS] )
+
+RETOUR         ::= RETOUR [ EXPRESSION ]
+
+ARGUMENTS      ::= EXPRESSION ( , EXPRESSION )*
+
+===============================================================================
+                              EXPRESSIONS
+===============================================================================
+
+EXPRESSION          ::= EXPRESSION_BOOL
+
+EXPRESSION_BOOL     ::= EXPRESSION_COMP ( ( ET | OU ) EXPRESSION_COMP )*
+
+EXPRESSION_COMP     ::= EXPRESSION_ARITH ( OP_COMPARAISON EXPRESSION_ARITH )*
+
+EXPRESSION_ARITH    ::= TERME ( ( + | - ) TERME )*
+
+TERME               ::= FACTEUR ( ( * | / ) FACTEUR )*
+
+FACTEUR             ::= NOMBRE 
+                      | VARIABLE
+                      | IDENTIFICATEUR ( [ARGUMENTS] )
+                      | ( EXPRESSION )
+                      | - FACTEUR
+                      | NON FACTEUR
+                      | CHAINE
+                      | VRAI
+                      | FAUX
+
+OP_COMPARAISON      ::= < | <= | > | >= | = | <>
+
+===============================================================================
+                          RÈGLES LEXICALES
+===============================================================================
+
+NOMBRE         ::= [-+]? CHIFFRE+ [ . CHIFFRE+ ]
+IDENTIFICATEUR ::= LETTRE ( LETTRE | CHIFFRE | _ )*
+CHAINE         ::= " [caractère]* "
+COMMENTAIRE    ::= // [caractère]* FIN_LIGNE | /* [caractère]* */
+
+CHIFFRE        ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+LETTRE         ::= a..z | A..Z
+
+===============================================================================
+                            CONTRAINTES
+===============================================================================
+
+- Identificateur : maximum 20 caractères
+- Nombre : maximum 11 chiffres
+- Commentaires :
+  * Une ligne : // jusqu'à la fin de la ligne
+  * Multi-lignes : /* ... */
+- Les mots-clés sont insensibles à la casse
+- Point-virgule optionnel après certaines structures de contrôle
+- RETOUR obligatoire dans toutes les fonctions avec type de retour
+
+===============================================================================
+                          MOTS-CLÉS RÉSERVÉS
+===============================================================================
+
+Structure du programme :
+  VAR, DEBUT, FIN, ALGORITHME
+
+Structures de données :
+  STRUCTURE, FINSTRUCTURE
+
+Fonctions :
+  FONCTION, FINFONCTION, RETOUR
+
+Types de données :
+  ENTIER, REEL, CHAINE, CHAINEDECHARACTERE, BOOLEEN
+
+Instructions de contrôle :
+  SI, ALORS, SINON, FINSI
+  POUR, JUSQUA, FAIRE, FINPOUR
+  TANTQUE, FINTANTQUE
+  REPETER
+
+Entrées/Sorties :
+  ECRIRE, LIRE
+
+Valeurs booléennes :
+  VRAI, FAUX
+
+Opérateurs logiques :
+  ET, OU, NON
+
+===============================================================================

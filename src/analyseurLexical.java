@@ -1,16 +1,19 @@
+// analyseurLexical.java
 import java.io.*;
 import java.util.*;
 
 enum TokenType {
     // Mots-Clés
-    VAR_TOKEN, DEBUT_TOKEN, FIN_TOKEN,
+    VAR_TOKEN, DEBUT_TOKEN, FIN_TOKEN, ALGORITHME_TOKEN,
     SI_TOKEN, ALORS_TOKEN, SINON_TOKEN, FINSI_TOKEN,
     POUR_TOKEN, JUSQUA_TOKEN, FAIRE_TOKEN, FINPOUR_TOKEN,
-    REPETER_TOKEN, TANTQUE_TOKEN,
+    REPETER_TOKEN, TANTQUE_TOKEN, FINTANTQUE_TOKEN,
     ECRIRE_TOKEN, LIRE_TOKEN,
     STRUCT_TOKEN, FINSTRUCT_TOKEN,
     FONCTION_TOKEN, FINFONCTION_TOKEN, RETOUR_TOKEN,
-    ENTIER_TOKEN, REEL_TOKEN, CHAINE_TOKEN,
+    ENTIER_TOKEN, REEL_TOKEN, CHAINE_TOKEN, BOOLEEN_TOKEN,
+    VRAI_TOKEN, FAUX_TOKEN,
+    ET_TOKEN, OU_TOKEN, NON_TOKEN,  // Opérateurs logiques
 
     // Symboles
     PV_TOKEN, PT_TOKEN, VIR_TOKEN, // ; . ,
@@ -25,7 +28,7 @@ enum TokenType {
     DP_TOKEN, // :
 
     // Règles lexicales
-    ID_TOKEN, NUM_TOKEN,
+    ID_TOKEN, NUM_ENTIER_TOKEN, NUM_REEL_TOKEN, CHAINE_LIT_TOKEN,
     EOF_TOKEN, ERREUR_TOKEN,
 
     // Langage choisi
@@ -37,34 +40,40 @@ enum Erreurs {
     ERR_ID_LONG, // Identificateur trop long (>20 caractères)
     ERR_NUM_LONG, // Nombre trop long (>11 chiffres)
     ERR_COMMENT, // Commentaire non fermé
-    ERR_DIRECTIVE // Directive de langage invalide
+    ERR_DIRECTIVE, // Directive de langage invalide
+    ERR_CHAINE_NON_FERMEE // Chaîne de caractères non fermée
 }
 
 class SymboleCourant {
     TokenType code; // Type du token
     String nom; // Valeur textuelle (ex: "x", "123", "+")
-    int valeur; // Valeur numérique (pour NUM_TOKEN)
+    double valeurReelle; // Valeur numérique réelle
+    int valeurEntiere; // Valeur numérique entière
     int ligne; // Numéro de ligne où le token a été trouvé
+    boolean estReel; // Indique si c'est un nombre réel
 
     public SymboleCourant() {
         this.code = TokenType.ERREUR_TOKEN;
         this.nom = "";
-        this.valeur = 0;
+        this.valeurEntiere = 0;
+        this.valeurReelle = 0.0;
         this.ligne = 1;
+        this.estReel = false;
     }
 
     @Override
     public String toString() {
         String info = String.format("Ligne %3d | %-25s | '%s'", ligne, code, nom);
-        if (code == TokenType.NUM_TOKEN) {
-            info += String.format(" | Valeur: %d", valeur);
+        if (code == TokenType.NUM_ENTIER_TOKEN) {
+            info += String.format(" | Valeur: %d", valeurEntiere);
+        } else if (code == TokenType.NUM_REEL_TOKEN) {
+            info += String.format(" | Valeur: %.2f", valeurReelle);
         }
         return info;
     }
 }
 
 public class analyseurLexical {
-
     private BufferedReader fichier; // Flux de lecture du fichier source
     private char carCourant; // Caractère actuellement lu
     private SymboleCourant symCourant; // Token courant
@@ -85,6 +94,8 @@ public class analyseurLexical {
         initialiserTableErreurs();
 
         lireCaractere();
+        // Initialiser le premier token
+        symboleSuivant();
     }
 
     private void initialiserMotsCles() {
@@ -94,6 +105,7 @@ public class analyseurLexical {
         tableMotsCles.put("var", TokenType.VAR_TOKEN);
         tableMotsCles.put("debut", TokenType.DEBUT_TOKEN);
         tableMotsCles.put("fin", TokenType.FIN_TOKEN);
+        tableMotsCles.put("algorithme", TokenType.ALGORITHME_TOKEN);
 
         // Mots-clés conditionnels
         tableMotsCles.put("si", TokenType.SI_TOKEN);
@@ -108,6 +120,7 @@ public class analyseurLexical {
         tableMotsCles.put("finpour", TokenType.FINPOUR_TOKEN);
         tableMotsCles.put("repeter", TokenType.REPETER_TOKEN);
         tableMotsCles.put("tantque", TokenType.TANTQUE_TOKEN);
+        tableMotsCles.put("fintantque", TokenType.FINTANTQUE_TOKEN);
 
         // Entrées/Sorties
         tableMotsCles.put("ecrire", TokenType.ECRIRE_TOKEN);
@@ -124,6 +137,17 @@ public class analyseurLexical {
         tableMotsCles.put("entier", TokenType.ENTIER_TOKEN);
         tableMotsCles.put("reel", TokenType.REEL_TOKEN);
         tableMotsCles.put("chainedecharactere", TokenType.CHAINE_TOKEN);
+        tableMotsCles.put("chaine", TokenType.CHAINE_TOKEN); // Alias
+        tableMotsCles.put("booleen", TokenType.BOOLEEN_TOKEN);
+
+        // Valeurs booléennes
+        tableMotsCles.put("vrai", TokenType.VRAI_TOKEN);
+        tableMotsCles.put("faux", TokenType.FAUX_TOKEN);
+
+        // Opérateurs logiques
+        tableMotsCles.put("et", TokenType.ET_TOKEN);
+        tableMotsCles.put("ou", TokenType.OU_TOKEN);
+        tableMotsCles.put("non", TokenType.NON_TOKEN);
     }
 
     private void initialiserTableErreurs() {
@@ -133,6 +157,7 @@ public class analyseurLexical {
         tableErreurs.put(Erreurs.ERR_NUM_LONG, "Nombre trop long (maximum 11 chiffres)");
         tableErreurs.put(Erreurs.ERR_COMMENT, "Commentaire non fermé (manque '*/')");
         tableErreurs.put(Erreurs.ERR_DIRECTIVE, "Directive de langage invalide (ex: #JAVA, #PYTHON)");
+        tableErreurs.put(Erreurs.ERR_CHAINE_NON_FERMEE, "Chaîne de caractères non fermée");
     }
 
     private void lireCaractere() throws IOException {
@@ -141,10 +166,17 @@ public class analyseurLexical {
             carCourant = '\0';
         } else {
             carCourant = (char) c;
-            if (carCourant == '\n') {
-                numLigne++;
-            }
         }
+    }
+
+    private char peekCaractere() throws IOException {
+        fichier.mark(1);
+        int c = fichier.read();
+        fichier.reset();
+        if (c == -1) {
+            return '\0';
+        }
+        return (char) c;
     }
 
     private void passerSeparateurs() throws IOException {
@@ -182,9 +214,14 @@ public class analyseurLexical {
                 }
                 // Ce n'est pas un commentaire, c'était juste '/'
                 else {
+                    // Revenir au caractère '/'
+                    carCourant = '/';
                     return;
                 }
             } else {
+                if (carCourant == '\n') {
+                    numLigne++;
+                }
                 lireCaractere();
             }
         }
@@ -235,15 +272,14 @@ public class analyseurLexical {
         langageCible = directiveStr.substring(1).toUpperCase();
 
         // Vérifier que le langage est supporté
-        Set<String> langagesSuportes = new HashSet<>(Arrays.asList("PYTHON"));
+        Set<String> langagesSuportes = new HashSet<>(Arrays.asList("PYTHON", "JAVA", "C"));
         if (!langagesSuportes.contains(langageCible)) {
             System.err.println("Avertissement: Langage '" + langageCible + "' non supporté par défaut.");
         }
 
         symCourant.code = TokenType.LANGAGE_TOKEN;
         symCourant.nom = directiveStr;
-
-        System.out.println("\n Langage cible détecté: " + langageCible + "\n");
+        symCourant.ligne = numLigne;
     }
 
     /**
@@ -272,6 +308,7 @@ public class analyseurLexical {
         String motLower = motStr.toLowerCase();
 
         symCourant.nom = motStr;
+        symCourant.ligne = numLigne;
 
         // Vérifier si c'est un mot-clé
         if (tableMotsCles.containsKey(motLower)) {
@@ -284,12 +321,25 @@ public class analyseurLexical {
 
     /**
      * Lit un nombre entier ou réel
-     * Format: chiffre+ [.chiffre+]
+     * Format: [-+]?chiffre+ [.chiffre+]
      * Longueur max: 11 chiffres
      */
     private void lireNombre() throws IOException {
         StringBuilder nombre = new StringBuilder();
         int longueur = 0;
+        boolean negatif = false;
+        boolean estReel = false;
+
+        // Vérifier le signe négatif
+        if (carCourant == '-') {
+            negatif = true;
+            nombre.append(carCourant);
+            lireCaractere();
+        }
+        // Gérer le signe + optionnel - on le consomme mais on ne l'ajoute pas
+        else if (carCourant == '+') {
+            lireCaractere(); // Consommer le + mais ne pas l'ajouter au nombre
+        }
 
         // Lire la partie entière
         while (estChiffre(carCourant) && longueur < 11) {
@@ -306,6 +356,7 @@ public class analyseurLexical {
 
         // Vérifier si c'est un nombre réel (avec point décimal)
         if (carCourant == '.') {
+            estReel = true;
             nombre.append(carCourant);
             lireCaractere();
 
@@ -317,21 +368,70 @@ public class analyseurLexical {
             }
         }
 
-        symCourant.nom = nombre.toString();
-        symCourant.code = TokenType.NUM_TOKEN;
-
-        // Convertir en entier (si possible)
-        try {
-            symCourant.valeur = Integer.parseInt(nombre.toString().split("\\.")[0]);
-        } catch (NumberFormatException e) {
-            symCourant.valeur = 0;
+        // Si on n'a lu aucun chiffre, ce n'est pas un nombre valide
+        if (nombre.length() == 0 || (negatif && nombre.length() == 1)) {
+            erreur(Erreurs.ERR_NUM_LONG);
+            return;
         }
+
+        symCourant.nom = nombre.toString();
+        symCourant.ligne = numLigne;
+        symCourant.estReel = estReel;
+
+        // Convertir en valeur numérique
+        try {
+            if (estReel) {
+                symCourant.code = TokenType.NUM_REEL_TOKEN;
+                symCourant.valeurReelle = Double.parseDouble(nombre.toString());
+            } else {
+                symCourant.code = TokenType.NUM_ENTIER_TOKEN;
+                symCourant.valeurEntiere = Integer.parseInt(nombre.toString());
+            }
+        } catch (NumberFormatException e) {
+            if (estReel) {
+                symCourant.valeurReelle = 0.0;
+            } else {
+                symCourant.valeurEntiere = 0;
+            }
+        }
+    }
+
+    /**
+     * Lit une chaîne de caractères entre guillemets
+     * Format: "caractères"
+     */
+    private void lireChaine() throws IOException {
+        StringBuilder chaine = new StringBuilder();
+
+        // Passer le guillemet ouvrant
+        lireCaractere();
+
+        // Lire jusqu'au guillemet fermant
+        while (carCourant != '"' && carCourant != '\0' && carCourant != '\n') {
+            chaine.append(carCourant);
+            lireCaractere();
+        }
+
+        // Vérifier si la chaîne est bien fermée
+        if (carCourant != '"') {
+            erreur(Erreurs.ERR_CHAINE_NON_FERMEE);
+            return;
+        }
+
+        // Passer le guillemet fermant
+        lireCaractere();
+
+        symCourant.code = TokenType.CHAINE_LIT_TOKEN;
+        symCourant.nom = chaine.toString();
+        symCourant.ligne = numLigne;
     }
 
     /**
      * Lit un symbole spécial: opérateurs, délimiteurs, etc.
      */
     private void lireSpecial() throws IOException {
+        symCourant.ligne = numLigne;
+
         switch (carCourant) {
             // Délimiteurs
             case ';':
@@ -354,7 +454,7 @@ public class analyseurLexical {
                 symCourant.nom = ":";
                 lireCaractere();
                 break;
-            
+
             // Parenthèses
             case '(':
                 symCourant.code = TokenType.PO_TOKEN;
@@ -366,7 +466,7 @@ public class analyseurLexical {
                 symCourant.nom = ")";
                 lireCaractere();
                 break;
-            
+
             // Crochets (tableaux)
             case '[':
                 symCourant.code = TokenType.CO_TOKEN;
@@ -378,7 +478,7 @@ public class analyseurLexical {
                 symCourant.nom = "]";
                 lireCaractere();
                 break;
-            
+
             // Opérateurs arithmétiques
             case '+':
                 symCourant.code = TokenType.PLUS_TOKEN;
@@ -400,7 +500,7 @@ public class analyseurLexical {
                 symCourant.nom = "/";
                 lireCaractere();
                 break;
-            
+
             // Affectation: <-
             case '<':
                 lireCaractere();
@@ -421,7 +521,7 @@ public class analyseurLexical {
                     symCourant.nom = "<";
                 }
                 break;
-            
+
             // Opérateurs de comparaison
             case '>':
                 lireCaractere();
@@ -439,13 +539,18 @@ public class analyseurLexical {
                 symCourant.nom = "=";
                 lireCaractere();
                 break;
-            
+
+            // Guillemet pour chaîne
+            case '"':
+                lireChaine();
+                break;
+
             // Fin de fichier
             case '\0':
                 symCourant.code = TokenType.EOF_TOKEN;
                 symCourant.nom = "EOF";
                 break;
-            
+
             // Caractère non reconnu
             default:
                 symCourant.code = TokenType.ERREUR_TOKEN;
@@ -457,39 +562,47 @@ public class analyseurLexical {
 
     public void symboleSuivant() throws IOException {
         passerSeparateurs();
-        symCourant.ligne = numLigne;
-        
+
         if (carCourant == '#') {
             lireDirective();
         } else if (estLettre(carCourant)) {
             lireMot();
         } else if (estChiffre(carCourant)) {
             lireNombre();
+        } else if (carCourant == '-' || carCourant == '+') {
+            // Peut être un opérateur ou le début d'un nombre
+            char prochain = peekCaractere();
+            if (estChiffre(prochain)) {
+                // C'est un nombre (signé)
+                lireNombre();
+            } else {
+                // C'est un opérateur
+                lireSpecial();
+            }
         } else {
             lireSpecial();
         }
     }
-    
+
     public SymboleCourant getSymboleCourant() {
         return symCourant;
     }
-    
+
     public String getLangageCible() {
         return langageCible;
     }
-    
+
     public int getNumLigne() {
         return numLigne;
     }
-    
+
     public void afficherToken() {
         System.out.println(symCourant.toString());
     }
-    
+
     public void fermer() throws IOException {
         if (fichier != null) {
             fichier.close();
         }
     }
-
 }
