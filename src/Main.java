@@ -6,67 +6,16 @@ public class Main {
         try {
             String fichier = "algotest.txt";
 
-            // Programme de test plus complet
-            String algoTest = "#PYTHON\n" +
-                    "Algorithme ExempleComplet\n" +
-                    "\n" +
-                    "Structure Personne\n" +
-                    "    nom, prenom: chaine;\n" +
-                    "    age: entier;\n" +
-                    "FinStructure\n" +
-                    "\n" +
-                    "Fonction calculerCarre(x: entier): entier\n" +
-                    "DEBUT\n" +
-                    "    RETOUR x * x\n" +  // Pas de ; après RETOUR
-                    "FinFonction\n" +  // Sans ; et avec capitalisation correcte
-                    "\n" +
-                    "VAR\n" +
-                    "    age, limite, resultat, compteur, i: entier;\n" +
-                    "    message: chaine;\n" +
-                    "    estMajeur: booleen;\n" +
-                    "    prix: reel;\n" +
-                    "    tab: entier[10];\n" +
-                    "DEBUT\n" +
-                    "    limite <- 18;\n" +
-                    "    age <- 20;\n" +
-                    "    prix <- 12.5;\n" +
-                    "    estMajeur <- age >= limite;\n" +
-                    "    SI estMajeur ET age < 100 ALORS\n" +
-                    "        message <- \"Personne majeure\";\n" +
-                    "        ECRIRE message;\n" +
-                    "    SINON\n" +
-                    "        ECRIRE \"Personne mineure\";\n" +
-                    "    FINSI\n" +
-                    "    \n" +
-                    "    resultat <- age + 5;\n" +
-                    "    ECRIRE \"Age: \", age;\n" +
-                    "    ECRIRE \"Prix: \", prix;\n" +
-                    "    \n" +
-                    "    // Test d'appel de fonction\n" +
-                    "    resultat <- calculerCarre(age);\n" +
-                    "    ECRIRE \"Carré de l'âge: \", resultat;\n" +
-                    "    \n" +
-                    "    // Test de boucle POUR\n" +
-                    "    POUR i <- 1 JUSQUA 5 FAIRE\n" +
-                    "        ECRIRE \"Itération: \", i;\n" +
-                    "    FINPOUR\n" +
-                    "    \n" +
-                    "    // Test de boucle TANTQUE\n" +
-                    "    compteur <- 0;\n" +
-                    "    TANTQUE compteur < 3 FAIRE\n" +
-                    "        ECRIRE \"Tantque: \", compteur;\n" +
-                    "        compteur <- compteur + 1;\n" +
-                    "    FINTANTQUE\n" +
-                    "    \n" +
-                    "    // Test de boucle REPETER\n" +
-                    "    REPETER\n" +
-                    "        ECRIRE \"Repeter\";\n" +
-                    "    JUSQUA FAUX\n" +  // REPETER avec JUSQUA, pas TANTQUE
-                    "FIN";
+            // On suppose que le fichier existe (éditeur : écris directement dans algotest.txt)
+            String algoTest;
+            java.io.File f = new java.io.File(fichier);
+            if (!f.exists()) {
+                System.err.println("Fichier '" + fichier + "' introuvable. Crée et remplis le fichier avant d'exécuter le programme.");
+                return;
+            }
 
-            FileWriter fw = new FileWriter(fichier);
-            fw.write(algoTest);
-            fw.close();
+            byte[] bytes = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(fichier));
+            algoTest = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
 
             System.out.println("==========================================");
             System.out.println("    COMPILATEUR POUR LANGAGE ALGORITHMIQUE");
@@ -142,11 +91,41 @@ public class Main {
                     System.out.println("\n=== ANALYSE SÉMANTIQUE RÉUSSIE ===");
 
                     // Si tout est bon, on pourrait passer à la génération de code
-                    System.out.println("\n=== PRÊT POUR LA GÉNÉRATION DE CODE ===");
+                    System.out.println("\n=== GÉNÉRATION DE CODE ===");
+
                     String langageCible = analyseurLex2.getLangageCible();
-                    if (langageCible != null) {
-                        System.out.println("Langage cible: " + langageCible);
+                    if (langageCible == null) {
+                        langageCible = "PYTHON"; // langage par défaut
                     }
+
+                    GenerateurCode generateur = null;
+                    String extension = "";
+
+                    switch (langageCible) {
+                        case "PYTHON":
+                            generateur = new GenerateurPython();
+                            extension = ".py";
+                            break;
+
+                        default:
+                            System.err.println("Langage cible non supporté : " + langageCible);
+                            return;
+                    }
+
+                    String codeGenere = generateur.generer(arbreSyntaxique);
+
+                    // Affichage console
+                    System.out.println("\n--- CODE GÉNÉRÉ (" + langageCible + ") ---");
+                    System.out.println(codeGenere);
+
+                    // Écriture dans un fichier
+                    String fichierSortie = "programme_genere" + extension;
+                    FileWriter fwSortie = new FileWriter(fichierSortie);
+                    fwSortie.write(codeGenere);
+                    fwSortie.close();
+
+                    System.out.println("\nCode généré avec succès dans le fichier : " + fichierSortie);
+
                 }
 
             } catch (IOException e) {

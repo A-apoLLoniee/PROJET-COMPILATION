@@ -117,9 +117,9 @@ public class NoeudAST {
         // Ajouter l'indentation
         for (int i = 0; i < niveau; i++) {
             if (i == niveau - 1) {
-                sb.append("├── ");
+                sb.append(" ");
             } else {
-                sb.append("│   ");
+                sb.append(" ");
             }
         }
 
@@ -149,18 +149,18 @@ public class NoeudAST {
         // Ajouter les branches verticales
         for (int i = 0; i < niveau - 1; i++) {
             if (i < derniers.size() && derniers.get(i)) {
-                sb.append("    ");
+                sb.append("  ");
             } else {
-                sb.append("│   ");
+                sb.append("  ");
             }
         }
 
         // Ajouter la branche finale
         if (niveau > 0) {
             if (derniers.size() > niveau - 1 && derniers.get(niveau - 1)) {
-                sb.append("└── ");
+                sb.append(" ");
             } else {
-                sb.append("├── ");
+                sb.append(" ");
             }
         }
 
