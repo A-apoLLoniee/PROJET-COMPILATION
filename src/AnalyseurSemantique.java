@@ -1,4 +1,4 @@
-// AnalyseurSemantique.java
+// AnalyseurSemantique.java - VERSION CORRIGÉE
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -19,6 +19,7 @@ class EntreeTableSymboles {
     int ligneDeclaration;
     boolean estConstante;
     boolean estTableau;
+    boolean estParametre; //  indique si c'est un paramètre
     Object valeurInitiale; // Pour les constantes
 
     public EntreeTableSymboles(String nom, TypeDonnee type, int ligne) {
@@ -27,20 +28,22 @@ class EntreeTableSymboles {
         this.ligneDeclaration = ligne;
         this.estConstante = false;
         this.estTableau = false;
+        this.estParametre = false;
         this.parametres = new ArrayList<>();
         this.valeurInitiale = null;
     }
 }
-
 class StructureInfo {
     String nom;
     Map<String, TypeDonnee> champs;
-    Map<String, String> champsStructure;
+    Map<String, String> champsStructure; // nom du champ -> nom de la structure du champ
+    Map<String, TypeDonnee> champsTableau; // nom du champ -> type d'élément si tableau
 
     public StructureInfo(String nom) {
         this.nom = nom;
         this.champs = new HashMap<>();
         this.champsStructure = new HashMap<>();
+        this.champsTableau = new HashMap<>();
     }
 }
 
@@ -106,6 +109,10 @@ public class AnalyseurSemantique {
                     analyserFonction(enfant);
                     break;
 
+                case DECLARATION_PROCEDURE:  // AJOUTER CETTE LIGNE
+                    analyserProcedure(enfant);
+                    break;
+
                 case SECTION_VAR:
                     analyserSectionVariable(enfant, true);
                     break;
@@ -114,12 +121,15 @@ public class AnalyseurSemantique {
                     analyserBlocInstructions(enfant);
                     break;
 
+
+
                 default:
                     erreurSemantique("Élément de programme inattendu: " +
                             enfant.getType(), enfant.getLigne());
             }
         }
     }
+
 
     private void analyserSectionVariable(NoeudAST sectionVar, boolean globale) {
         // Une section VAR contient plusieurs déclarations de variables
@@ -160,6 +170,8 @@ public class AnalyseurSemantique {
         List<String> nomsVariables = new ArrayList<>();
         TypeDonnee typeChamp = TypeDonnee.INCONNU;
         String nomStructureChamp = null;
+        TypeDonnee typeElementTableau = TypeDonnee.INCONNU;
+        boolean estTableau = false;
 
         for (NoeudAST enfant : declaration.getEnfants()) {
             switch (enfant.getType()) {
@@ -170,9 +182,20 @@ public class AnalyseurSemantique {
                     break;
 
                 case TYPE:
-                    typeChamp = convertirType(enfant.getValeur());
-                    if (typeChamp == TypeDonnee.STRUCTURE) {
-                        nomStructureChamp = enfant.getValeur();
+                    String typeStr = enfant.getValeur();
+
+                    // CORRECTION: Gérer les tableaux dans les structures
+                    if (typeStr.contains("[")) {
+                        estTableau = true;
+                        // Extraire le type de base (ex: "entier[3]" -> "entier")
+                        String typeBase = typeStr.substring(0, typeStr.indexOf('[')).trim();
+                        typeElementTableau = convertirType(typeBase);
+                        typeChamp = TypeDonnee.TABLEAU;
+                    } else {
+                        typeChamp = convertirType(typeStr);
+                        if (typeChamp == TypeDonnee.STRUCTURE) {
+                            nomStructureChamp = typeStr;
+                        }
                     }
                     break;
             }
@@ -192,6 +215,147 @@ public class AnalyseurSemantique {
                 if (nomStructureChamp != null) {
                     structure.champsStructure.put(nomVariable, nomStructureChamp);
                 }
+                if (estTableau) {
+                    structure.champsTableau.put(nomVariable, typeElementTableau);
+                }
+            }
+        }
+    }
+
+    private void analyserProcedure(NoeudAST procedure) {
+        String nomProcedure = procedure.getValeur();
+        if (nomProcedure.isEmpty()) {
+            erreurSemantique("Procédure sans nom", procedure.getLigne());
+            return;
+        }
+
+        if (fonctions.containsKey(nomProcedure)) {
+            erreurSemantique("Procédure déjà définie: " + nomProcedure,
+                    procedure.getLigne());
+            return;
+        }
+
+        List<TypeDonnee> parametres = new ArrayList<>();
+        List<String> nomsParametres = new ArrayList<>();
+        List<TypeDonnee> typesElementsParametres = new ArrayList<>(); // Pour les tableaux
+        List<String> nomsStructuresParametres = new ArrayList<>(); // Pour les structures
+
+        // Analyser les paramètres
+        for (NoeudAST enfant : procedure.getEnfants()) {
+            switch (enfant.getType()) {
+                case LISTE_PARAMETRES:
+                    analyserParametresFonction(enfant, parametres, nomsParametres,
+                            typesElementsParametres, nomsStructuresParametres);
+                    break;
+            }
+        }
+
+        FonctionInfo info = new FonctionInfo(nomProcedure, TypeDonnee.INCONNU);
+        info.parametres = parametres;
+        fonctions.put(nomProcedure, info);
+
+        // Entrer dans la portée de la procédure
+        entrerNouvellePortee();
+        fonctionCourante = nomProcedure;
+        typeRetourAttendu = TypeDonnee.INCONNU;
+
+        // Ajouter les paramètres
+        for (int i = 0; i < nomsParametres.size(); i++) {
+            EntreeTableSymboles entree = new EntreeTableSymboles(
+                    nomsParametres.get(i), parametres.get(i), procedure.getLigne());
+            entree.estParametre = true;
+
+            // CORRECTION: Si c'est un tableau, ajouter le typeElement
+            if (parametres.get(i) == TypeDonnee.TABLEAU) {
+                entree.estTableau = true;
+                entree.typeElement = typesElementsParametres.get(i);
+            }
+
+            // CORRECTION: Si c'est une structure, ajouter le nomStructure
+            if (parametres.get(i) == TypeDonnee.STRUCTURE) {
+                entree.nomStructure = nomsStructuresParametres.get(i);
+            }
+
+            pilePortees.peek().put(nomsParametres.get(i), entree);
+        }
+
+        // Analyser le corps
+        for (NoeudAST enfant : procedure.getEnfants()) {
+            switch (enfant.getType()) {
+                case SECTION_VAR:
+                    analyserSectionVariable(enfant, false);
+                    break;
+                case BLOC_INSTRUCTIONS:
+                    analyserBlocInstructions(enfant);
+                    break;
+            }
+        }
+
+        sortirPortee();
+        fonctionCourante = null;
+        typeRetourAttendu = TypeDonnee.INCONNU;
+    }
+
+    private void analyserDeclarationVariable(NoeudAST declaration, boolean globale) {
+        List<String> nomsVariables = new ArrayList<>();
+        TypeDonnee type = TypeDonnee.INCONNU;
+        TypeDonnee typeElement = TypeDonnee.INCONNU;
+        String nomStructure = null;
+        boolean estTableau = false;
+
+        for (NoeudAST enfant : declaration.getEnfants()) {
+            switch (enfant.getType()) {
+                case LISTE_IDENTIFICATEURS:
+                    for (NoeudAST id : enfant.getEnfants()) {
+                        nomsVariables.add(id.getValeur());
+                    }
+                    break;
+
+                case TYPE:
+                    String typeStr = enfant.getValeur();
+
+                    // Vérifier s'il s'agit d'un tableau
+                    if (typeStr.contains("[")) {
+                        estTableau = true;
+                        // Extraire le type de base (ex: "entier[10]" -> "entier")
+                        String typeBase = typeStr.substring(0, typeStr.indexOf('[')).trim();
+                        typeElement = convertirType(typeBase);
+                        type = TypeDonnee.TABLEAU;
+                    } else {
+                        type = convertirType(typeStr);
+                        if (type == TypeDonnee.STRUCTURE) {
+                            nomStructure = typeStr;
+                            // Vérifier que la structure est définie
+                            if (!structures.containsKey(nomStructure)) {
+                                erreurSemantique("Structure non définie: " + nomStructure,
+                                        enfant.getLigne());
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+
+        if (type == TypeDonnee.INCONNU) {
+            erreurSemantique("Type invalide dans la déclaration", declaration.getLigne());
+            return;
+        }
+
+        // Ajouter chaque variable dans la table de symboles appropriée
+        Map<String, EntreeTableSymboles> table = globale ?
+                tableSymbolesGlobale : pilePortees.peek();
+
+        for (String nomVariable : nomsVariables) {
+            if (table.containsKey(nomVariable)) {
+                erreurSemantique("Variable déjà déclarée: " + nomVariable,
+                        declaration.getLigne());
+            } else {
+                EntreeTableSymboles entree = new EntreeTableSymboles(nomVariable, type,
+                        declaration.getLigne());
+                entree.estTableau = estTableau;
+                entree.typeElement = typeElement;
+                entree.nomStructure = nomStructure;
+                table.put(nomVariable, entree);
             }
         }
     }
@@ -212,26 +376,26 @@ public class AnalyseurSemantique {
         TypeDonnee typeRetour = TypeDonnee.INCONNU;
         List<TypeDonnee> parametres = new ArrayList<>();
         List<String> nomsParametres = new ArrayList<>();
+        List<TypeDonnee> typesElementsParametres = new ArrayList<>(); // Pour les tableaux
+        List<String> nomsStructuresParametres = new ArrayList<>(); // Pour les structures
 
-        // Analyser les paramètres et le type de retour
-        for (int i = 0; i < fonction.getEnfants().size(); i++) {
-            NoeudAST enfant = fonction.getEnfant(i);
-
+        // Analyser les enfants pour trouver les paramètres et le type de retour
+        for (NoeudAST enfant : fonction.getEnfants()) {
             switch (enfant.getType()) {
                 case LISTE_PARAMETRES:
-                    analyserParametresFonction(enfant, parametres, nomsParametres);
+                    analyserParametresFonction(enfant, parametres, nomsParametres,
+                            typesElementsParametres, nomsStructuresParametres);
                     break;
 
                 case TYPE:
-                    // Premier type est le type de retour
-                    if (typeRetour == TypeDonnee.INCONNU) {
-                        typeRetour = convertirType(enfant.getValeur());
-                    }
-                    break;
+                    String typeStr = enfant.getValeur();
 
-                case SECTION_VAR:
-                    // Variables locales de la fonction
-                    analyserSectionVariable(enfant, false);
+                    // CORRECTION: Gérer les types de structure pour le retour
+                    if (structures.containsKey(typeStr)) {
+                        typeRetour = TypeDonnee.STRUCTURE;
+                    } else {
+                        typeRetour = convertirType(typeStr);
+                    }
                     break;
             }
         }
@@ -240,185 +404,96 @@ public class AnalyseurSemantique {
         info.parametres = parametres;
         fonctions.put(nomFonction, info);
 
-        // Sauvegarder le contexte
-        String fonctionPrecedente = fonctionCourante;
-        TypeDonnee retourPrecedent = typeRetourAttendu;
-
+        // Entrer dans la portée de la fonction
+        entrerNouvellePortee();
         fonctionCourante = nomFonction;
         typeRetourAttendu = typeRetour;
 
-        // Entrer dans une nouvelle portée pour la fonction
-        entrerNouvellePortee();
-
-        // Ajouter les paramètres à la table des symboles locale
+        // Ajouter les paramètres à la portée locale
         for (int i = 0; i < nomsParametres.size(); i++) {
-            String nomParam = nomsParametres.get(i);
-            TypeDonnee typeParam = parametres.get(i);
+            EntreeTableSymboles entree = new EntreeTableSymboles(
+                    nomsParametres.get(i), parametres.get(i), fonction.getLigne());
+            entree.estParametre = true;
 
-            EntreeTableSymboles entree = new EntreeTableSymboles(nomParam, typeParam,
-                    fonction.getLigne());
-            pilePortees.peek().put(nomParam, entree);
+            // CORRECTION: Si c'est un tableau, ajouter le typeElement
+            if (parametres.get(i) == TypeDonnee.TABLEAU) {
+                entree.estTableau = true;
+                entree.typeElement = typesElementsParametres.get(i);
+            }
+
+            // CORRECTION: Si c'est une structure, ajouter le nomStructure
+            if (parametres.get(i) == TypeDonnee.STRUCTURE) {
+                entree.nomStructure = nomsStructuresParametres.get(i);
+            }
+
+            pilePortees.peek().put(nomsParametres.get(i), entree);
         }
-
-        // Analyser le corps de la fonction
-        // CORRECTION : Vérifier la présence d'une expression de retour
-        boolean aRetour = false;
 
         // Analyser le corps de la fonction
         for (NoeudAST enfant : fonction.getEnfants()) {
             switch (enfant.getType()) {
+                case SECTION_VAR:
+                    analyserSectionVariable(enfant, false);
+                    break;
+
                 case BLOC_INSTRUCTIONS:
                     analyserBlocInstructions(enfant);
                     break;
 
-                case EXPRESSION_BINAIRE:
-                case NOMBRE:
-                case VARIABLE:
-                case APPEL_FONCTION:
-                case VALEUR_BOOLEENNE:
-                case CHAINE:
-                case NEGATION:
-                case ACCES_TABLEAU:
-                    // C'est l'expression de retour - dernière expression non-bloc
-                    aRetour = true;
-                    TypeDonnee typeRetourTrouve = analyserExpression(enfant);
-                    verifierCompatibiliteTypes(typeRetourAttendu, typeRetourTrouve,
-                            "Type de retour incorrect", enfant.getLigne());
+                case RETOUR:
+                    analyserRetour(enfant);
                     break;
             }
         }
 
-        // Vérifier qu'il y a bien un retour si la fonction a un type de retour
-        if (typeRetour != TypeDonnee.INCONNU && !aRetour) {
-            erreurSemantique("La fonction doit contenir un RETOUR", fonction.getLigne());
-        }
-
-        // Restaurer le contexte
         sortirPortee();
-        fonctionCourante = fonctionPrecedente;
-        typeRetourAttendu = retourPrecedent;
+        fonctionCourante = null;
+        typeRetourAttendu = TypeDonnee.INCONNU;
     }
 
-    private void analyserParametresFonction(NoeudAST parametresNode,
-                                            List<TypeDonnee> types,
-                                            List<String> noms) {
-        for (NoeudAST param : parametresNode.getEnfants()) {
+    private void analyserParametresFonction(NoeudAST listeParametres,
+                                            List<TypeDonnee> parametres,
+                                            List<String> nomsParametres,
+                                            List<TypeDonnee> typesElements,
+                                            List<String> nomsStructures) {
+        for (NoeudAST param : listeParametres.getEnfants()) {
             if (param.getType() == NoeudAST.TypeNoeud.PARAMETRE) {
                 String nomParam = param.getValeur();
-                TypeDonnee typeParam = TypeDonnee.INCONNU;
 
-                for (NoeudAST enfantParam : param.getEnfants()) {
-                    if (enfantParam.getType() == NoeudAST.TypeNoeud.TYPE) {
-                        typeParam = convertirType(enfantParam.getValeur());
-                    }
-                }
+                for (NoeudAST enfant : param.getEnfants()) {
+                    if (enfant.getType() == NoeudAST.TypeNoeud.TYPE) {
+                        String typeStr = enfant.getValeur();
+                        TypeDonnee type;
+                        TypeDonnee typeElement = TypeDonnee.INCONNU;
+                        String nomStructure = null;
 
-                if (typeParam != TypeDonnee.INCONNU) {
-                    types.add(typeParam);
-                    noms.add(nomParam);
-                }
-            }
-        }
-    }
-
-    // Méthode utilitaire pour convertir un type simple (sans tableau)
-    private TypeDonnee convertirTypeSimple(String typeStr) {
-        switch (typeStr.toLowerCase()) {
-            case "entier":
-                return TypeDonnee.ENTIER;
-            case "reel":
-                return TypeDonnee.REEL;
-            case "chainedecaractere":
-            case "chaine":
-                return TypeDonnee.CHAINE;
-            case "booleen":
-                return TypeDonnee.BOOLEEN;
-            default:
-                if (structures.containsKey(typeStr)) {
-                    return TypeDonnee.STRUCTURE;
-                }
-                return TypeDonnee.INCONNU;
-        }
-    }
-
-    private void analyserDeclarationVariable(NoeudAST declaration, boolean globale) {
-        List<String> nomsVariables = new ArrayList<>();
-        TypeDonnee typeVariable = TypeDonnee.INCONNU;
-        String nomStructure = null;
-        boolean estTableau = false;  // AJOUT
-        TypeDonnee typeElementTableau = TypeDonnee.INCONNU;  // AJOUT
-
-        for (NoeudAST enfant : declaration.getEnfants()) {
-            switch (enfant.getType()) {
-                case LISTE_IDENTIFICATEURS:
-                    for (NoeudAST id : enfant.getEnfants()) {
-                        nomsVariables.add(id.getValeur());
-                    }
-                    break;
-
-                case TYPE:
-                    String typeStr = enfant.getValeur();
-
-                    // CORRECTION : Gérer les tableaux (ex: "entier[10]")
-                    if (typeStr.contains("[")) {
-                        estTableau = true;
-                        // Extraire le type de base avant le '['
-                        String typeBase = typeStr.substring(0, typeStr.indexOf('[')).trim();
-                        typeElementTableau = convertirTypeSimple(typeBase);
-                        typeVariable = TypeDonnee.TABLEAU;
-                    } else {
-                        typeVariable = convertirType(typeStr);
-                        if (typeVariable == TypeDonnee.STRUCTURE) {
+                        // CORRECTION: Gérer les tableaux et structures dans les paramètres
+                        if (typeStr.contains("[")) {
+                            type = TypeDonnee.TABLEAU;
+                            // Extraire le type de base (ex: "entier[5]" -> "entier")
+                            String typeBase = typeStr.substring(0, typeStr.indexOf('[')).trim();
+                            typeElement = convertirType(typeBase);
+                        } else if (structures.containsKey(typeStr)) {
+                            type = TypeDonnee.STRUCTURE;
                             nomStructure = typeStr;
-                            if (!structures.containsKey(nomStructure)) {
-                                erreurSemantique("Structure non définie: " + nomStructure,
-                                        declaration.getLigne());
-                            }
+                        } else {
+                            type = convertirType(typeStr);
                         }
+
+                        parametres.add(type);
+                        nomsParametres.add(nomParam);
+                        typesElements.add(typeElement);
+                        nomsStructures.add(nomStructure);
                     }
-                    break;
-            }
-        }
-
-        if (typeVariable == TypeDonnee.INCONNU) {
-            erreurSemantique("Type de variable invalide", declaration.getLigne());
-            return;
-        }
-
-        Map<String, EntreeTableSymboles> tableCourante =
-                globale ? tableSymbolesGlobale : pilePortees.peek();
-
-        for (String nomVariable : nomsVariables) {
-            if (tableCourante.containsKey(nomVariable)) {
-                erreurSemantique("Variable déjà déclarée: " + nomVariable,
-                        declaration.getLigne());
-            } else {
-                EntreeTableSymboles entree = new EntreeTableSymboles(nomVariable,
-                        typeVariable,
-                        declaration.getLigne());
-                if (nomStructure != null) {
-                    entree.nomStructure = nomStructure;
-                }
-                if (estTableau) {
-                    entree.estTableau = true;
-                    entree.typeElement = typeElementTableau;
-                }
-                tableCourante.put(nomVariable, entree);
-
-                // Ajouter aussi à la table globale pour recherche facile
-                if (globale) {
-                    tableSymbolesGlobale.put(nomVariable, entree);
                 }
             }
         }
     }
 
     private void analyserBlocInstructions(NoeudAST bloc) {
-        entrerNouvellePortee();
         for (NoeudAST instruction : bloc.getEnfants()) {
             analyserInstruction(instruction);
         }
-        sortirPortee();
     }
 
     private void analyserInstruction(NoeudAST instruction) {
@@ -455,9 +530,29 @@ public class AnalyseurSemantique {
                 analyserAppelFonction(instruction, true);
                 break;
 
+            case RETOUR:
+                analyserRetour(instruction);
+                break;
+
             default:
                 erreurSemantique("Instruction non reconnue: " + instruction.getType(),
                         instruction.getLigne());
+        }
+    }
+
+    private void analyserRetour(NoeudAST retour) {
+        // Vérifier que le type de retour correspond
+        if (retour.getEnfants().size() > 0) {
+            NoeudAST expression = retour.getEnfant(0);
+            TypeDonnee typeRetourTrouve = analyserExpression(expression);
+            verifierCompatibiliteTypes(typeRetourAttendu, typeRetourTrouve,
+                    "Type de retour incorrect", retour.getLigne());
+        } else {
+            // RETOUR sans expression
+            if (typeRetourAttendu != TypeDonnee.INCONNU) {
+                erreurSemantique("RETOUR doit avoir une expression (type attendu: " +
+                        typeRetourAttendu + ")", retour.getLigne());
+            }
         }
     }
 
@@ -483,31 +578,58 @@ public class AnalyseurSemantique {
             return;
         }
 
-        // Cas spécial pour l'accès tableau
-        if (affectation.getEnfants().get(0).getType() == NoeudAST.TypeNoeud.ACCES_TABLEAU) {
+        // NOUVELLE LOGIQUE : distinguer les cas selon le nombre d'enfants ET le type du premier enfant
+        if (affectation.getEnfants().size() == 2) {
+            // 2 enfants : peut être ACCES_TABLEAU ou ACCES_CHAMP
             NoeudAST acces = affectation.getEnfants().get(0);
             NoeudAST expression = affectation.getEnfants().get(1);
 
-            // Vérifier l'indice
-            if (acces.getEnfants().size() > 0) {
-                TypeDonnee typeIndice = analyserExpression(acces.getEnfants().get(0));
-                if (typeIndice != TypeDonnee.ENTIER) {
-                    erreurSemantique("Indice de tableau doit être entier",
-                            acces.getLigne());
+            if (acces.getType() == NoeudAST.TypeNoeud.ACCES_TABLEAU) {
+                // CAS 1 : Affectation à un élément de tableau (ex: notes[0] <- 15)
+                // Vérifier l'indice du tableau
+                if (acces.getEnfants().size() > 0) {
+                    TypeDonnee typeIndice = analyserExpression(acces.getEnfants().get(0));
+                    if (typeIndice != TypeDonnee.ENTIER) {
+                        erreurSemantique("Indice de tableau doit être entier",
+                                acces.getLigne());
+                    }
                 }
-            }
 
-            TypeDonnee typeExpression = analyserExpression(expression);
-            verifierCompatibiliteTypes(entree.typeElement, typeExpression,
-                    "Types incompatibles dans l'affectation de tableau",
-                    affectation.getLigne());
+                TypeDonnee typeExpression = analyserExpression(expression);
+                verifierCompatibiliteTypes(entree.typeElement, typeExpression,
+                        "Types incompatibles dans l'affectation de tableau",
+                        affectation.getLigne());
+            } else if (acces.getType() == NoeudAST.TypeNoeud.ACCES_CHAMP) {
+                // CAS 2 : Affectation à un champ de structure (ex: p1.x <- 5.0)
+                TypeDonnee typeChamp = analyserAccesChampExpression(acces);
+                TypeDonnee typeExpression = analyserExpression(expression);
+
+                verifierCompatibiliteTypes(typeChamp, typeExpression,
+                        "Types incompatibles dans l'affectation au champ",
+                        affectation.getLigne());
+            } else {
+                erreurSemantique("Structure d'affectation invalide",
+                        affectation.getLigne());
+            }
         } else {
+            // CAS 3 : Affectation normale (ex: max <- tab[0] ou x <- 5)
+            // Structure: 1 seul enfant = expression (qui peut être un ACCES_TABLEAU)
             NoeudAST expression = affectation.getEnfants().get(0);
             TypeDonnee typeExpression = analyserExpression(expression);
 
-            verifierCompatibiliteTypes(entree.type, typeExpression,
-                    "Types incompatibles dans l'affectation",
-                    affectation.getLigne());
+            // Si l'expression est un accès tableau, vérifier que le type correspond
+            if (expression.getType() == NoeudAST.TypeNoeud.ACCES_TABLEAU) {
+                // Pour un accès tableau, le type de l'expression est typeElement du tableau
+                // On doit donc vérifier la compatibilité avec le type de la variable
+                verifierCompatibiliteTypes(entree.type, typeExpression,
+                        "Types incompatibles dans l'affectation",
+                        affectation.getLigne());
+            } else {
+                // Pour les autres types d'expressions
+                verifierCompatibiliteTypes(entree.type, typeExpression,
+                        "Types incompatibles dans l'affectation",
+                        affectation.getLigne());
+            }
         }
     }
 
@@ -755,7 +877,16 @@ public class AnalyseurSemantique {
 
         // Vérifier la compatibilité des types d'arguments
         for (int i = 0; i < typesArguments.size(); i++) {
-            if (!typesCompatibles(info.parametres.get(i), typesArguments.get(i))) {
+            TypeDonnee typeParam = info.parametres.get(i);
+            TypeDonnee typeArg = typesArguments.get(i);
+
+            if (typeParam == TypeDonnee.TABLEAU) {
+                // Pour un tableau, vérifier que l'argument est aussi un tableau
+                if (typeArg != TypeDonnee.TABLEAU) {
+                    erreurSemantique("Argument " + (i+1) + " doit être un tableau pour " +
+                            nomFonction, appel.getLigne());
+                }
+            } else if (!typesCompatibles(typeParam, typeArg)) {
                 erreurSemantique("Type d'argument incompatible pour le paramètre " + (i+1) +
                         " de " + nomFonction, appel.getLigne());
             }
@@ -791,6 +922,9 @@ public class AnalyseurSemantique {
             case CHAINE:
                 return TypeDonnee.CHAINE;
 
+            case ACCES_CHAMP:  // CORRECTION: Ajouter ce cas
+                return analyserAccesChampExpression(expression);
+
             default:
                 erreurSemantique("Expression non reconnue: " + expression.getType(),
                         expression.getLigne());
@@ -798,14 +932,102 @@ public class AnalyseurSemantique {
         }
     }
 
-    private TypeDonnee analyserVariable(NoeudAST variable) {
-        String nom = variable.getValeur();
+    private TypeDonnee analyserAccesChampExpression(NoeudAST acces) {
+        String nomStructure = acces.getValeur();
+        EntreeTableSymboles entreeStructure = chercherVariable(nomStructure);
 
-        // Vérifier si c'est une constante booléenne
-        if (nom.equalsIgnoreCase("vrai") || nom.equalsIgnoreCase("faux")) {
-            return TypeDonnee.BOOLEEN;
+        if (entreeStructure == null) {
+            erreurSemantique("Variable non déclarée: " + nomStructure, acces.getLigne());
+            return TypeDonnee.INCONNU;
         }
 
+        if (entreeStructure.type != TypeDonnee.STRUCTURE) {
+            erreurSemantique("Variable n'est pas une structure: " + nomStructure, acces.getLigne());
+            return TypeDonnee.INCONNU;
+        }
+
+        // Obtenir les informations de la structure
+        StructureInfo info = structures.get(entreeStructure.nomStructure);
+        if (info == null) {
+            erreurSemantique("Structure non définie: " + entreeStructure.nomStructure,
+                    acces.getLigne());
+            return TypeDonnee.INCONNU;
+        }
+
+        // Parcourir la chaîne d'accès aux champs
+        String currentStructure = entreeStructure.nomStructure;
+        TypeDonnee finalType = TypeDonnee.INCONNU;
+
+        for (int i = 0; i < acces.getEnfants().size(); i++) {
+            NoeudAST champNode = acces.getEnfants().get(i);
+            String nomChamp = champNode.getValeur();
+
+            StructureInfo currentInfo = structures.get(currentStructure);
+            if (currentInfo == null) {
+                erreurSemantique("Structure non définie: " + currentStructure,
+                        champNode.getLigne());
+                return TypeDonnee.INCONNU;
+            }
+
+            // Vérifier que le champ existe
+            if (!currentInfo.champs.containsKey(nomChamp)) {
+                erreurSemantique("Champ '" + nomChamp + "' non défini dans la structure '" +
+                        currentStructure + "'", champNode.getLigne());
+                return TypeDonnee.INCONNU;
+            }
+
+            TypeDonnee typeChamp = currentInfo.champs.get(nomChamp);
+
+            // Si c'est le dernier champ de la chaîne
+            if (i == acces.getEnfants().size() - 1) {
+                finalType = typeChamp;
+
+                // Si c'est un accès à un tableau
+                if (champNode.getType() == NoeudAST.TypeNoeud.ACCES_TABLEAU) {
+                    if (typeChamp != TypeDonnee.TABLEAU) {
+                        erreurSemantique("Le champ '" + nomChamp + "' n'est pas un tableau",
+                                champNode.getLigne());
+                        return TypeDonnee.INCONNU;
+                    }
+
+                    // Vérifier l'indice
+                    if (champNode.getEnfants().size() > 0) {
+                        TypeDonnee typeIndice = analyserExpression(champNode.getEnfants().get(0));
+                        if (typeIndice != TypeDonnee.ENTIER) {
+                            erreurSemantique("Indice de tableau doit être entier",
+                                    champNode.getLigne());
+                        }
+                    }
+
+                    // Retourner le type d'élément du tableau
+                    if (currentInfo.champsTableau.containsKey(nomChamp)) {
+                        finalType = currentInfo.champsTableau.get(nomChamp);
+                    }
+                }
+            } else {
+                // Continuer vers la structure suivante dans la chaîne
+                if (typeChamp != TypeDonnee.STRUCTURE) {
+                    erreurSemantique("Le champ '" + nomChamp + "' n'est pas une structure",
+                            champNode.getLigne());
+                    return TypeDonnee.INCONNU;
+                }
+
+                String nextStructure = currentInfo.champsStructure.get(nomChamp);
+                if (nextStructure == null) {
+                    erreurSemantique("Structure non définie pour le champ '" + nomChamp + "'",
+                            champNode.getLigne());
+                    return TypeDonnee.INCONNU;
+                }
+
+                currentStructure = nextStructure;
+            }
+        }
+
+        return finalType;
+    }
+
+    private TypeDonnee analyserVariable(NoeudAST variable) {
+        String nom = variable.getValeur();
         EntreeTableSymboles entree = chercherVariable(nom);
 
         if (entree == null) {
@@ -821,26 +1043,25 @@ public class AnalyseurSemantique {
         EntreeTableSymboles entree = chercherVariable(nomTableau);
 
         if (entree == null) {
-            erreurSemantique("Tableau non déclaré: " + nomTableau, acces.getLigne());
+            erreurSemantique("Variable non déclarée: " + nomTableau, acces.getLigne());
             return TypeDonnee.INCONNU;
         }
 
-        if (!entree.estTableau) {
+        if (entree.type != TypeDonnee.TABLEAU) {
             erreurSemantique("Variable n'est pas un tableau: " + nomTableau,
                     acces.getLigne());
             return TypeDonnee.INCONNU;
         }
 
         // Vérifier l'indice
-        if (!acces.getEnfants().isEmpty()) {
-            NoeudAST indice = acces.getEnfants().get(0);
-            TypeDonnee typeIndice = analyserExpression(indice);
-
+        if (acces.getEnfants().size() > 0) {
+            TypeDonnee typeIndice = analyserExpression(acces.getEnfants().get(0));
             if (typeIndice != TypeDonnee.ENTIER) {
-                erreurSemantique("Indice de tableau doit être entier", indice.getLigne());
+                erreurSemantique("Indice de tableau doit être entier", acces.getLigne());
             }
         }
 
+        // Retourner le type de l'élément du tableau
         return entree.typeElement;
     }
 
@@ -850,9 +1071,9 @@ public class AnalyseurSemantique {
             return TypeDonnee.INCONNU;
         }
 
-        String operateur = operation.getValeur();
         NoeudAST gauche = operation.getEnfants().get(0);
         NoeudAST droite = operation.getEnfants().get(1);
+        String operateur = operation.getValeur();
 
         TypeDonnee typeGauche = analyserExpression(gauche);
         TypeDonnee typeDroite = analyserExpression(droite);
@@ -860,10 +1081,11 @@ public class AnalyseurSemantique {
         // Vérifier la compatibilité des types selon l'opérateur
         if (estOperateurArithmetique(operateur)) {
             if (!typesCompatiblesArithmetiques(typeGauche, typeDroite)) {
-                erreurSemantique("Types incompatibles pour l'opération arithmétique " + operateur,
-                        operation.getLigne());
+                erreurSemantique("Types incompatibles pour l'opération arithmétique " +
+                        operateur, operation.getLigne());
                 return TypeDonnee.INCONNU;
             }
+            return determinerTypeResultat(operateur, typeGauche, typeDroite);
         } else if (estOperateurComparaison(operateur)) {
             if (!typesCompatiblesComparaison(typeGauche, typeDroite)) {
                 erreurSemantique("Types incompatibles pour la comparaison " + operateur,
@@ -966,8 +1188,22 @@ public class AnalyseurSemantique {
     }
 
     private boolean typesCompatibles(TypeDonnee type1, TypeDonnee type2) {
-        return typesCompatiblesArithmetiques(type1, type2) ||
-                typesCompatiblesComparaison(type1, type2);
+        if (type1 == type2) {
+            return true;
+        }
+
+        // Tableaux sont compatibles entre eux
+        if (type1 == TypeDonnee.TABLEAU && type2 == TypeDonnee.TABLEAU) {
+            return true;
+        }
+
+        // Conversions implicites entre numériques
+        if ((type1 == TypeDonnee.ENTIER && type2 == TypeDonnee.REEL) ||
+                (type1 == TypeDonnee.REEL && type2 == TypeDonnee.ENTIER)) {
+            return true;
+        }
+
+        return false;
     }
 
     private boolean typesCompatiblesArithmetiques(TypeDonnee type1, TypeDonnee type2) {
@@ -1044,31 +1280,6 @@ public class AnalyseurSemantique {
         }
     }
 
-    private void verifierRetourFonction(NoeudAST fonction) {
-        // Vérifie si la fonction a un retour explicite
-        boolean aRetourExplicite = false;
-
-        for (NoeudAST enfant : fonction.getEnfants()) {
-            if (enfant.getType() == NoeudAST.TypeNoeud.RETOUR) {
-                aRetourExplicite = true;
-                break;
-            }
-
-            if (enfant.getType() == NoeudAST.TypeNoeud.BLOC_INSTRUCTIONS) {
-                for (NoeudAST instruction : enfant.getEnfants()) {
-                    if (instruction.getType() == NoeudAST.TypeNoeud.RETOUR) {
-                        aRetourExplicite = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!aRetourExplicite) {
-            erreurSemantique("La fonction doit contenir un RETOUR",
-                    fonction.getLigne());
-        }
-    }
 
     private void erreurSemantique(String message, int ligne) {
         String erreur = String.format("Erreur sémantique ligne %d: %s", ligne, message);
@@ -1084,14 +1295,6 @@ public class AnalyseurSemantique {
         System.out.println("   Ligne " + ligne + ": " + message);
     }
 
-    // Getters
-    public List<String> getErreursSemantiques() {
-        return erreursSemantiques;
-    }
-
-    public List<String> getAvertissements() {
-        return avertissements;
-    }
 
     public boolean aErreurs() {
         return !erreursSemantiques.isEmpty();

@@ -1,0 +1,28 @@
+#PYTHON
+ALGORITHME TestProcedures
+VAR
+    nombre : entier;
+    message : chaine;
+
+PROCEDURE afficherMessage(msg : chaine)
+DEBUT
+    ECRIRE "Message reçu : ", msg
+FINPROCEDURE
+
+PROCEDURE afficherTableMulti(n : entier)
+VAR
+    i : entier;
+DEBUT
+    ECRIRE "Table de multiplication de ", n
+    POUR i <- 1 JUSQUA 10 FAIRE
+        ECRIRE n, " x ", i, " = ", n * i
+    FINPOUR
+FINPROCEDURE
+
+DEBUT
+    message <- "Test des procédures"
+    afficherMessage(message)
+
+    nombre <- 7
+    afficherTableMulti(nombre)
+FIN

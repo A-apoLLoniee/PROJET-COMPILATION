@@ -12,6 +12,7 @@ public class NoeudAST {
         DECLARATION_STRUCTURE("DeclarationStructure"),
         CHAMP_STRUCTURE("ChampStructure"),
         DECLARATION_FONCTION("DeclarationFonction"),
+        DECLARATION_PROCEDURE("DeclarationProcedure"),
 
         // Instructions
         BLOC_INSTRUCTIONS("BlocInstructions"),
@@ -34,6 +35,7 @@ public class NoeudAST {
         VALEUR_BOOLEENNE("ValeurBooleenne"),
         ACCES_TABLEAU("AccesTableau"),
         CHAINE("Chaine"),
+        ACCES_CHAMP("AccesChamp"),
 
         // Types et paramètres
         TYPE("Type"),

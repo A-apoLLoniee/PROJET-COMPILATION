@@ -97,7 +97,8 @@ public class AnalyseurSyntaxique {
     private void declarations() throws IOException {
         while (verifier(TokenType.STRUCT_TOKEN) ||
                 verifier(TokenType.FONCTION_TOKEN) ||
-                verifier(TokenType.VAR_TOKEN)) {
+                verifier(TokenType.VAR_TOKEN) ||
+                verifier(TokenType.PROCEDURE_TOKEN)) {
 
             if (verifier(TokenType.STRUCT_TOKEN)) {
                 declarationStructure();
@@ -105,6 +106,9 @@ public class AnalyseurSyntaxique {
                 declarationFonction();
             } else if (verifier(TokenType.VAR_TOKEN)) {
                 sectionVar();
+            }
+            else if (verifier(TokenType.PROCEDURE_TOKEN)) {
+                declarationProcedure();
             }
         }
     }
@@ -271,14 +275,18 @@ public class AnalyseurSyntaxique {
             fonction.ajouterEnfant(corps);
         }
 
-        // Vérifier et consommer RETOUR
         if (!consommer(TokenType.RETOUR_TOKEN)) {
             erreurSyntaxique("'RETOUR' attendu dans la fonction");
         } else {
-            // Expression de retour
+            // Expression de retour OBLIGATOIRE pour une fonction
             NoeudAST exprRetour = expression();
-            if (exprRetour != null) {
-                fonction.ajouterEnfant(exprRetour);
+            if (exprRetour == null) {
+                erreurSyntaxique("Expression de retour attendue après RETOUR");
+            } else {
+                // Créer un nœud RETOUR qui contient l'expression
+                NoeudAST retourNode = new NoeudAST(NoeudAST.TypeNoeud.RETOUR, "", tokenCourant.ligne);
+                retourNode.ajouterEnfant(exprRetour);
+                fonction.ajouterEnfant(retourNode);
             }
         }
 
@@ -380,6 +388,82 @@ public class AnalyseurSyntaxique {
         return listeParams;
     }
 
+    private void declarationProcedure() throws IOException {
+        NoeudAST procedure = new NoeudAST(NoeudAST.TypeNoeud.DECLARATION_PROCEDURE,
+                "", tokenCourant.ligne);
+        avancer(); // PROCEDURE
+
+        if (!verifier(TokenType.ID_TOKEN)) {
+            erreurSyntaxique("Nom de procédure attendu");
+            return;
+        }
+
+        procedure.setValeur(tokenCourant.nom);
+        avancer();
+
+        // Paramètres
+        if (!consommer(TokenType.PO_TOKEN)) {
+            erreurSyntaxique("'(' attendu");
+        }
+
+        if (!verifier(TokenType.PF_TOKEN)) {
+            NoeudAST parametres = parametresDeclaration();
+            procedure.ajouterEnfant(parametres);
+        }
+
+        if (!consommer(TokenType.PF_TOKEN)) {
+            erreurSyntaxique("')' attendu");
+        }
+
+        // PAS de type de retour pour une procédure!
+
+        // Section VAR locale (optionnelle)
+        if (verifier(TokenType.VAR_TOKEN)) {
+            sectionVarLocale(procedure);
+        }
+
+        if (!consommer(TokenType.DEBUT_TOKEN)) {
+            erreurSyntaxique("'DEBUT' attendu");
+        }
+
+        // Instructions (PAS de RETOUR)
+        NoeudAST corps = blocInstructionsProcedure();  // NOUVELLE MÉTHODE
+        if (corps != null) {
+            procedure.ajouterEnfant(corps);
+        }
+
+        if (!consommer(TokenType.FINPROCEDURE_TOKEN)) {
+            erreurSyntaxique("'FinProcedure' attendu");
+        }
+
+        arbreSyntaxique.ajouterEnfant(procedure);
+    }
+
+    private NoeudAST blocInstructionsProcedure() throws IOException {
+        NoeudAST bloc = new NoeudAST(NoeudAST.TypeNoeud.BLOC_INSTRUCTIONS,
+                "", tokenCourant.ligne);
+
+        // Lire les instructions jusqu'à FINPROCEDURE
+        while (!verifier(TokenType.FINPROCEDURE_TOKEN) &&
+                !verifier(TokenType.EOF_TOKEN)) {
+
+            NoeudAST instr = instruction();
+            if (instr != null) {
+                bloc.ajouterEnfant(instr);
+            }
+
+            if (verifier(TokenType.PV_TOKEN)) {
+                avancer();
+            }
+
+            if (verifier(TokenType.FINPROCEDURE_TOKEN)) {
+                break;
+            }
+        }
+
+        return bloc.getEnfants().isEmpty() ? null : bloc;
+    }
+
     // Règle: LISTE_IDENTIFICATEURS ::= IDENTIFICATEUR ( , IDENTIFICATEUR )*
     private NoeudAST listeIdentificateurs() throws IOException {
         NoeudAST liste = new NoeudAST(NoeudAST.TypeNoeud.LISTE_IDENTIFICATEURS,
@@ -456,8 +540,8 @@ public class AnalyseurSyntaxique {
                 !verifier(TokenType.FINTANTQUE_TOKEN) &&
                 !verifier(TokenType.FINFONCTION_TOKEN) &&
                 !verifier(TokenType.SINON_TOKEN) &&
-                !verifier(TokenType.RETOUR_TOKEN) &&
-                !verifier(TokenType.JUSQUA_TOKEN)) {
+                !verifier(TokenType.JUSQUA_TOKEN) &&
+                !verifier(TokenType.EOF_TOKEN)) {
 
             NoeudAST instr = instruction();
             if (instr != null) {
@@ -479,27 +563,31 @@ public class AnalyseurSyntaxique {
                 tokenCourant.code == TokenType.FINPOUR_TOKEN ||
                 tokenCourant.code == TokenType.FINTANTQUE_TOKEN ||
                 tokenCourant.code == TokenType.FINFONCTION_TOKEN ||
+                tokenCourant.code == TokenType.FINPROCEDURE_TOKEN ||
                 tokenCourant.code == TokenType.SINON_TOKEN ||
-                tokenCourant.code == TokenType.RETOUR_TOKEN ||
                 tokenCourant.code == TokenType.JUSQUA_TOKEN) {
             return null;
         }
 
         switch (tokenCourant.code) {
             case ID_TOKEN:
-                // Peut être affectation ou appel de fonction
+                // Peut être affectation, appel de fonction, ou accès à un champ
                 String nom = tokenCourant.nom;
                 int ligne = tokenCourant.ligne;
                 avancer();
 
-                if (verifier(TokenType.AFF_TOKEN)) {
+                // Vérifier si c'est un accès à un champ (avec point)
+                if (verifier(TokenType.PT_TOKEN)) {
+                    // C'est une affectation à un champ de structure
+                    return affectationChamp(nom, ligne);
+                } else if (verifier(TokenType.AFF_TOKEN)) {
                     return affectation(nom, ligne);
                 } else if (verifier(TokenType.CO_TOKEN)) {
                     return affectationTableau(nom, ligne);
                 } else if (verifier(TokenType.PO_TOKEN)) {
                     return appelFonctionInstruction(nom, ligne);
                 } else {
-                    erreurSyntaxique("'<-' ou '(' attendu après identificateur");
+                    erreurSyntaxique("'<-', '.', '(' ou '[' attendu après identificateur");
                     return null;
                 }
 
@@ -526,22 +614,28 @@ public class AnalyseurSyntaxique {
                 return null;
         }
     }
-    // Ajouter une méthode pour gérer RETOUR
-    private NoeudAST retour() throws IOException {
-        NoeudAST retour = new NoeudAST(NoeudAST.TypeNoeud.RETOUR,
-                "", tokenCourant.ligne);
-        avancer(); // RETOUR
 
-        // Expression de retour optionnelle
-        if (!verifier(TokenType.PV_TOKEN) &&
-                !verifier(TokenType.FINFONCTION_TOKEN)) {
-            NoeudAST expr = expression();
-            if (expr != null) {
-                retour.ajouterEnfant(expr);
-            }
+    private NoeudAST affectationChamp(String nomStructure, int ligne) throws IOException {
+        NoeudAST affect = new NoeudAST(NoeudAST.TypeNoeud.AFFECTATION, nomStructure, ligne);
+
+        // Lire l'accès au champ
+        NoeudAST acces = accesChamp(nomStructure, ligne);
+        if (acces != null) {
+            affect.ajouterEnfant(acces);
         }
 
-        return retour;
+        if (!consommer(TokenType.AFF_TOKEN)) {
+            erreurSyntaxique("'<-' attendu après l'accès au champ");
+            return null;
+        }
+
+        // Lire l'expression de droite
+        NoeudAST expr = expression();
+        if (expr != null) {
+            affect.ajouterEnfant(expr);
+        }
+
+        return affect;
     }
 
     // Règle: AFFECTATION ::= VARIABLE <- EXPRESSION ;
@@ -940,7 +1034,9 @@ public class AnalyseurSyntaxique {
                 int ligne = tokenCourant.ligne;
                 avancer();
 
-                if (verifier(TokenType.PO_TOKEN)) {
+                if (verifier(TokenType.PT_TOKEN)) {
+                    return accesChamp(nom, ligne);
+                } else if (verifier(TokenType.PO_TOKEN)) {
                     return appelFonctionExpression(nom, ligne);
                 } else if (verifier(TokenType.CO_TOKEN)) {
                     return accesTableau(nom, ligne);
@@ -989,6 +1085,54 @@ public class AnalyseurSyntaxique {
                 erreurSyntaxique("Facteur attendu (nombre, variable, chaîne, booléen, '(' ou '-')");
                 return null;
         }
+    }
+
+    private NoeudAST accesChamp(String nomStructure, int ligne) throws IOException {
+        NoeudAST acces = new NoeudAST(NoeudAST.TypeNoeud.ACCES_CHAMP, nomStructure, ligne);
+
+        while (verifier(TokenType.PT_TOKEN)) {
+            avancer(); // consommer le point
+
+            if (!verifier(TokenType.ID_TOKEN)) {
+                erreurSyntaxique("Identificateur de champ attendu après le point");
+                return null;
+            }
+
+            // Ajouter le champ comme enfant
+            NoeudAST champ = new NoeudAST(NoeudAST.TypeNoeud.VARIABLE,
+                    tokenCourant.nom, tokenCourant.ligne);
+            acces.ajouterEnfant(champ);
+            avancer();
+
+            // Vérifier si on a un autre point (accès en chaîne comme rect.coinSupGauche.x)
+            // ou un crochet pour un tableau (comme etud.notes[0])
+            if (!verifier(TokenType.PT_TOKEN) && !verifier(TokenType.CO_TOKEN)) {
+                break;
+            }
+
+            // Si c'est un crochet, gérer l'accès tableau
+            if (verifier(TokenType.CO_TOKEN)) {
+                avancer(); // [
+                NoeudAST indice = expression();
+                if (indice != null) {
+                    // CORRECTION: Utiliser le nom du champ au lieu de tokenCourant.nom
+                    NoeudAST accesTableau = new NoeudAST(NoeudAST.TypeNoeud.ACCES_TABLEAU,
+                            champ.getValeur(), ligne);
+                    accesTableau.ajouterEnfant(indice);
+
+                    // Remplacer le champ par l'accès tableau
+                    acces.getEnfants().remove(acces.getEnfants().size() - 1);
+                    acces.ajouterEnfant(accesTableau);
+                }
+
+                if (!consommer(TokenType.CF_TOKEN)) {
+                    erreurSyntaxique("']' attendu");
+                }
+                break;
+            }
+        }
+
+        return acces;
     }
 
     private NoeudAST appelFonctionExpression(String nomFonction, int ligne) throws IOException {

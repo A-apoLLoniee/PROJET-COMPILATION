@@ -1,0 +1,80 @@
+#PYTHON
+ALGORITHME TestGlobalSimple
+
+STRUCTURE Personne
+    nom : chaine;
+    age : entier;
+    salaire : reel;
+FINSTRUCTURE
+
+FONCTION calculerSomme(a : entier, b : entier) : entier
+DEBUT
+    RETOUR a + b
+FINFONCTION
+
+FONCTION calculerMoyenne(tab : reel[5]) : reel
+VAR
+    i : entier;
+    somme : reel;
+DEBUT
+    somme <- 0
+    POUR i <- 0 JUSQUA 4 FAIRE
+        somme <- somme + tab[i]
+    FINPOUR
+    RETOUR somme / 5
+FINFONCTION
+
+PROCEDURE afficherBonjour()
+DEBUT
+    ECRIRE "Bonjour tout le monde !"
+FINPROCEDURE
+
+VAR
+    p : Personne;
+    notes : reel[5];
+    nombres : entier[5];
+    i, somme, resultat : entier;
+    moyenne : reel;
+
+DEBUT
+    afficherBonjour()
+
+    p.nom <- "Alice"
+    p.age <- 25
+    p.salaire <- 3500.50
+
+    ECRIRE "Nom : ", p.nom
+    ECRIRE "Age : ", p.age
+    ECRIRE "Salaire : ", p.salaire
+
+    notes[0] <- 15.5
+    notes[1] <- 12.0
+    notes[2] <- 18.5
+    notes[3] <- 10.0
+    notes[4] <- 14.0
+
+    moyenne <- calculerMoyenne(notes)
+    ECRIRE "Moyenne : ", moyenne
+
+    nombres[0] <- 5
+    nombres[1] <- 10
+    nombres[2] <- 15
+    nombres[3] <- 20
+    nombres[4] <- 25
+
+    somme <- 0
+    POUR i <- 0 JUSQUA 4 FAIRE
+        somme <- somme + nombres[i]
+    FINPOUR
+
+    ECRIRE "Somme des nombres : ", somme
+
+    resultat <- calculerSomme(10, 20)
+    ECRIRE "10 + 20 = ", resultat
+
+    SI moyenne > 12.0 ALORS
+        ECRIRE "Bonne moyenne !"
+    SINON
+        ECRIRE "Peut mieux faire"
+    FINSI
+FIN

@@ -1,0 +1,10 @@
+#PYTHON
+ALGORITHME TestBase
+VAR
+    a, b, somme : entier;
+DEBUT
+    a <- 10
+    b <- 20
+    somme <- a + b
+    ECRIRE "Somme = ", somme
+FIN

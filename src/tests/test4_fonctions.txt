@@ -1,0 +1,39 @@
+#PYTHON
+ALGORITHME TestFonctions
+VAR
+    resultat, a, b : entier;
+    chaineResultat : chaine;
+
+FONCTION addition(x : entier, y : entier) : entier
+DEBUT
+    RETOUR x + y
+FINFONCTION
+
+FONCTION factorielle(n : entier) : entier
+VAR
+    i, f : entier;
+DEBUT
+    f <- 1
+    POUR i <- 1 JUSQUA n FAIRE
+        f <- f * i
+    FINPOUR
+    RETOUR f
+FINFONCTION
+
+FONCTION concatener(s1 : chaine, s2 : chaine) : chaine
+DEBUT
+    RETOUR s1 + s2
+FINFONCTION
+
+DEBUT
+    a <- 7
+    b <- 3
+
+    resultat <- addition(a, b)
+    ECRIRE a, " + ", b, " = ", resultat
+
+    ECRIRE "Factorielle de 4 = ", factorielle(4)
+
+    chaineResultat <- concatener("Bonjour ", "Monde")
+    ECRIRE chaineResultat
+FIN

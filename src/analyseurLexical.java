@@ -11,6 +11,7 @@ enum TokenType {
     ECRIRE_TOKEN, LIRE_TOKEN,
     STRUCT_TOKEN, FINSTRUCT_TOKEN,
     FONCTION_TOKEN, FINFONCTION_TOKEN, RETOUR_TOKEN,
+    PROCEDURE_TOKEN, FINPROCEDURE_TOKEN,  // AJOUT pour procédures
     ENTIER_TOKEN, REEL_TOKEN, CHAINE_TOKEN, BOOLEEN_TOKEN,
     VRAI_TOKEN, FAUX_TOKEN,
     ET_TOKEN, OU_TOKEN, NON_TOKEN,  // Opérateurs logiques
@@ -126,12 +127,14 @@ public class analyseurLexical {
         tableMotsCles.put("ecrire", TokenType.ECRIRE_TOKEN);
         tableMotsCles.put("lire", TokenType.LIRE_TOKEN);
 
-        // Structures et fonctions
+        // Structures et fonctions/procédures
         tableMotsCles.put("structure", TokenType.STRUCT_TOKEN);
         tableMotsCles.put("finstructure", TokenType.FINSTRUCT_TOKEN);
         tableMotsCles.put("fonction", TokenType.FONCTION_TOKEN);
-        tableMotsCles.put("finfonction", TokenType.FINFONCTION_TOKEN);
         tableMotsCles.put("retour", TokenType.RETOUR_TOKEN);
+        tableMotsCles.put("finfonction", TokenType.FINFONCTION_TOKEN);
+        tableMotsCles.put("procedure", TokenType.PROCEDURE_TOKEN);  // AJOUT
+        tableMotsCles.put("finprocedure", TokenType.FINPROCEDURE_TOKEN);  // AJOUT
 
         // Types de données
         tableMotsCles.put("entier", TokenType.ENTIER_TOKEN);
@@ -199,6 +202,9 @@ public class analyseurLexical {
                                 break;
                             }
                         } else {
+                            if (carCourant == '\n') {
+                                numLigne++;
+                            }
                             lireCaractere();
                         }
                     }

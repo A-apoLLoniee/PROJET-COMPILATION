@@ -1,0 +1,28 @@
+#PYTHON
+ALGORITHME TestControles
+VAR
+    x, y : entier;
+    estVrai, condition : booleen;
+DEBUT
+    x <- 15
+    y <- 25
+
+    // Condition simple
+    SI x < y ALORS
+        ECRIRE "x est plus petit"
+    FINSI
+
+    // Condition avec SINON
+    SI x > y ALORS
+        ECRIRE "x est plus grand"
+    SINON
+        ECRIRE "x n'est pas plus grand"
+    FINSI
+
+    // Condition complexe
+    estVrai <- VRAI
+    condition <- (x > 10) ET estVrai
+    SI condition ALORS
+        ECRIRE "Condition complexe vraie"
+    FINSI
+FIN

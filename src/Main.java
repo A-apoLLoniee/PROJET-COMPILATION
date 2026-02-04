@@ -1,34 +1,47 @@
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] args) throws Exception {
         try {
-            String fichier = "algotest.txt";
+            String nomFichierSource = "testGlobal.txt";
+            // Options disponibles :
+            // - test1_base.txt
+            // - test2_boucles.txt
+            // - test3_controles.txt
+            // - test4_fonctions.txt
+            // - test5_procedures.txt
+            // - test6_tableaux.txt
+            // - test7_structures.txt
+            // - testGlobal.txt
 
-            // On suppose que le fichier existe (éditeur : écris directement dans algotest.txt)
-            String algoTest;
-            java.io.File f = new java.io.File(fichier);
-            if (!f.exists()) {
-                System.err.println("Fichier '" + fichier + "' introuvable. Crée et remplis le fichier avant d'exécuter le programme.");
+            // 2. Dossier de sortie (généré automatiquement)
+            String dossierSortie = "src/code_genere/";
+
+            // Vérifier si le fichier source existe
+            Path cheminSource = Paths.get("src/tests", nomFichierSource);
+            if (!Files.exists(cheminSource)) {
+                System.err.println("ERREUR : Fichier source introuvable : " + cheminSource);
+                System.err.println("Vérifiez que le fichier existe dans src/tests/");
                 return;
             }
 
-            byte[] bytes = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(fichier));
-            algoTest = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+            // Lire le contenu du fichier
+            String algorithmeSource = new String(Files.readAllBytes(cheminSource), "UTF-8");
 
-            System.out.println("==========================================");
             System.out.println("    COMPILATEUR POUR LANGAGE ALGORITHMIQUE");
-            System.out.println("==========================================");
 
-            System.out.println("\n=== PROGRAMME SOURCE ===");
-            System.out.println(algoTest);
+            System.out.println("\n=== FICHIER SOURCE : " + nomFichierSource + " ===");
+            System.out.println(algorithmeSource);
 
             System.out.println("\n=== ANALYSE LEXICALE ===");
             System.out.println("Tokens reconnus:");
 
             // Créer et exécuter l'analyseur lexical
-            analyseurLexical analyseurLex = new analyseurLexical(fichier);
+            analyseurLexical analyseurLex = new analyseurLexical(cheminSource.toString());
 
             // Analyser et afficher tous les tokens
             while (analyseurLex.getSymboleCourant().code != TokenType.EOF_TOKEN) {
@@ -38,13 +51,16 @@ public class Main {
 
             System.out.println("\n=== ANALYSE LEXICALE TERMINÉE ===");
 
+            // NOUVEAU: Récupérer le langage cible
+            String langageCible = analyseurLex.getLangageCible();
+
             // Fermer l'analyseur lexical
             analyseurLex.fermer();
 
             System.out.println("\n=== ANALYSE SYNTAXIQUE ===");
 
             // Recréer l'analyseur lexical pour l'analyse syntaxique
-            analyseurLexical analyseurLex2 = new analyseurLexical(fichier);
+            analyseurLexical analyseurLex2 = new analyseurLexical(cheminSource.toString());
             AnalyseurSyntaxique analyseurSyntaxique = new AnalyseurSyntaxique(analyseurLex2);
 
             try {
@@ -87,45 +103,58 @@ public class Main {
 
                 if (analyseurSemantique.aErreurs()) {
                     System.err.println("\n=== ANALYSE SÉMANTIQUE ÉCHOUÉE ===");
+                    analyseurLex2.fermer();
+                    return;
                 } else {
                     System.out.println("\n=== ANALYSE SÉMANTIQUE RÉUSSIE ===");
 
-                    // Si tout est bon, on pourrait passer à la génération de code
-                    System.out.println("\n=== GÉNÉRATION DE CODE ===");
-
-                    String langageCible = analyseurLex2.getLangageCible();
-                    if (langageCible == null) {
-                        langageCible = "PYTHON"; // langage par défaut
+                    // VÉRIFICATION DE LA DIRECTIVE DE LANGAGE
+                    if (langageCible == null || !langageCible.equalsIgnoreCase("PYTHON")) {
+                        System.err.println("\n========================================");
+                        System.err.println("ATTENTION : Génération de code impossible !");
+                        System.err.println("========================================");
+                        if (langageCible == null) {
+                            System.err.println("Raison : Aucune directive de langage trouvée (#PYTHON attendu)");
+                        } else {
+                            System.err.println("Raison : Langage cible non supporté : " + langageCible);
+                        }
+                        System.err.println("\nLes langages supportés actuellement :");
+                        System.err.println("  - PYTHON (#PYTHON)");
+                        System.err.println("\nAjoutez la directive #PYTHON en début de fichier pour générer du code Python.");
+                        System.err.println("========================================");
+                        analyseurLex2.fermer();
+                        return;
                     }
 
-                    GenerateurCode generateur = null;
-                    String extension = "";
+                    // GÉNÉRATION DE CODE PYTHON
+                    System.out.println("\n=== GÉNÉRATION DE CODE (PYTHON) ===");
 
-                    switch (langageCible) {
-                        case "PYTHON":
-                            generateur = new GenerateurPython();
-                            extension = ".py";
-                            break;
-
-                        default:
-                            System.err.println("Langage cible non supporté : " + langageCible);
-                            return;
-                    }
-
+                    // Créer le générateur Python
+                    GenerateurCode generateur = new GenerateurPython();
                     String codeGenere = generateur.generer(arbreSyntaxique);
 
-                    // Affichage console
-                    System.out.println("\n--- CODE GÉNÉRÉ (" + langageCible + ") ---");
-                    System.out.println(codeGenere);
+                    // Créer le dossier de sortie s'il n'existe pas
+                    Path cheminDossierSortie = Paths.get(dossierSortie);
+                    if (!Files.exists(cheminDossierSortie)) {
+                        Files.createDirectories(cheminDossierSortie);
+                        System.out.println("Dossier créé : " + dossierSortie);
+                    }
 
-                    // Écriture dans un fichier
-                    String fichierSortie = "programme_genere" + extension;
-                    FileWriter fwSortie = new FileWriter(fichierSortie);
+                    // Nom du fichier de sortie (même nom que le source avec .py)
+                    String nomFichierSortie = nomFichierSource.replace(".txt", ".py");
+                    Path cheminCompletSortie = Paths.get(dossierSortie, nomFichierSortie);
+
+                    // Écrire le code généré dans le fichier
+                    FileWriter fwSortie = new FileWriter(cheminCompletSortie.toString());
                     fwSortie.write(codeGenere);
                     fwSortie.close();
 
-                    System.out.println("\nCode généré avec succès dans le fichier : " + fichierSortie);
-
+                    // Affichage console
+                    System.out.println("\n--- CODE PYTHON GÉNÉRÉ ---");
+                    System.out.println(codeGenere);
+                    System.out.println("========================================");
+                    System.out.println("Fichier généré avec succès : " + cheminCompletSortie);
+                    System.out.println("========================================");
                 }
 
             } catch (IOException e) {

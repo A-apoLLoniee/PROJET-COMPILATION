@@ -1,0 +1,49 @@
+#PYTHON
+ALGORITHME TestTableaux
+VAR
+    notes : entier[5];
+    i, somme, max : entier;
+    moyenne : reel;
+
+FONCTION trouverMaximum(tab : entier[5]) : entier
+VAR
+    i, max : entier;
+DEBUT
+    max <- tab[0]
+    POUR i <- 1 JUSQUA 4 FAIRE
+        SI tab[i] > max ALORS
+            max <- tab[i]
+        FINSI
+    FINPOUR
+    RETOUR max
+FINFONCTION
+
+DEBUT
+    // Initialisation du tableau
+    notes[0] <- 15
+    notes[1] <- 12
+    notes[2] <- 18
+    notes[3] <- 10
+    notes[4] <- 14
+
+    // Affichage des notes
+    ECRIRE "Notes : "
+    POUR i <- 0 JUSQUA 4 FAIRE
+        ECRIRE "notes[", i, "] = ", notes[i]
+    FINPOUR
+
+    // Calcul de la somme
+    somme <- 0
+    POUR i <- 0 JUSQUA 4 FAIRE
+        somme <- somme + notes[i]
+    FINPOUR
+    ECRIRE "Somme = ", somme
+
+    // Calcul de la moyenne
+    moyenne <- somme / 5
+    ECRIRE "Moyenne = ", moyenne
+
+    // Trouver le maximum
+    max <- trouverMaximum(notes)
+    ECRIRE "Note maximale = ", max
+FIN

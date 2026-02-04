@@ -1,0 +1,73 @@
+#PYTHON
+ALGORITHME TestStructures
+
+STRUCTURE Point
+    x : reel;
+    y : reel;
+FINSTRUCTURE
+
+STRUCTURE Rectangle
+    coinSupGauche : Point;
+    largeur : reel;
+    hauteur : reel;
+FINSTRUCTURE
+
+STRUCTURE Etudiant
+    nom : chaine;
+    age : entier;
+    notes : entier[3];
+    actif : booleen;
+FINSTRUCTURE
+
+FONCTION calculerPerimetre(rect : Rectangle) : reel
+DEBUT
+    RETOUR 2 * (rect.largeur + rect.hauteur)
+FINFONCTION
+
+VAR
+    p1, p2 : Point;
+    rect : Rectangle;
+    etud : Etudiant;
+    perimetre : reel;
+    i : entier;
+
+DEBUT
+    // Initialisation des points
+    p1.x <- 0.0
+    p1.y <- 0.0
+
+    p2.x <- 5.0
+    p2.y <- 3.0
+
+    ECRIRE "Point 1 : (", p1.x, ", ", p1.y, ")"
+    ECRIRE "Point 2 : (", p2.x, ", ", p2.y, ")"
+
+    // Initialisation du rectangle
+    rect.coinSupGauche <- p1
+    rect.largeur <- 10.5
+    rect.hauteur <- 5.2
+
+    ECRIRE "Rectangle : largeur=", rect.largeur, ", hauteur=", rect.hauteur
+
+    // Calcul du périmètre
+    perimetre <- calculerPerimetre(rect)
+    ECRIRE "Périmètre = ", perimetre
+
+    // Initialisation de l'étudiant
+    etud.nom <- "Alice"
+    etud.age <- 20
+    etud.actif <- VRAI
+
+    etud.notes[0] <- 15
+    etud.notes[1] <- 12
+    etud.notes[2] <- 18
+
+    ECRIRE "Étudiant : ", etud.nom
+    ECRIRE "Âge : ", etud.age
+    ECRIRE "Actif : ", etud.actif
+
+    ECRIRE "Notes : "
+    POUR i <- 0 JUSQUA 2 FAIRE
+        ECRIRE "  Note ", i, " = ", etud.notes[i]
+    FINPOUR
+FIN
