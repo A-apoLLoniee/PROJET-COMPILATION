@@ -1,0 +1,95 @@
+===============================================================================
+                     Règles Sémantiques du Langage
+===============================================================================
+
+
+                1  Déclaration des variables
+===============================================================================
+
+
+Toute variable doit être déclarée avant d’être utilisée.
+
+Le type de la variable doit être valide : ENTIER, REEL, CHAINE, BOOLEEN, STRUCTURE ou TABLEAU.
+
+Pas de doublon dans la même portée.
+
+
+               2 Constantes
+===============================================================================
+
+Une constante ne peut pas être modifiée après sa déclaration.
+
+Son type doit être respecté dans toutes les utilisations.
+
+
+               3 Types et compatibilité
+===============================================================================
+Les types doivent être compatibles lors des affectations et opérations :
+
+ENTIER + ENTIER → ENTIER
+
+ENTIER + REEL → REEL
+
+REEL + REEL → REEL
+
+Les indices de tableaux doivent être de type ENTIER.
+
+Les structures doivent être déclarées avant leur utilisation.
+
+
+
+               4  Fonctions et procédures
+===============================================================================
+Le nombre et le type des arguments doivent correspondre à la définition.
+
+Le type de la valeur de retour d’une fonction doit correspondre à l’expression RETOUR.
+
+Une fonction doit toujours retourner une valeur si elle est déclarée avec un type.
+
+
+
+                  5  Boucles et conditions
+===============================================================================
+Les conditions (IF, WHILE) doivent être de type BOOLEEN.
+
+Les variables de boucle (POUR) sont constantes dans la boucle et ne peuvent pas être modifiées.
+
+
+
+                  6  Opérations et expressions
+===============================================================================
+Opérations arithmétiques : ENTIER et REEL sont compatibles selon le contexte.
+
+Opérations logiques : uniquement sur des valeurs BOOLEENNES.
+
+Comparaisons : ENTIER avec ENTIER, REEL avec REEL ou ENTIER.
+
+Concaténation : seules les chaînes de caractères peuvent être concaténées.
+
+
+
+                 7  Tableaux
+===============================================================================
+Les tableaux doivent être déclarés avec un type et une taille.
+
+Les indices doivent être entiers valides et dans les limites du tableau.
+
+Les affectations aux éléments du tableau doivent respecter le type du tableau.
+
+
+
+                  8  Structures
+===============================================================================
+Une structure doit être déclarée avant utilisation.
+
+Les champs doivent être accédés avec la syntaxe appropriée (ex. structure.champ).
+
+Les types des champs doivent être respectés lors des affectations.
+
+
+
+                 9  Instructions d’entrée/sortie
+===============================================================================
+Les valeurs lues doivent correspondre au type de la variable.
+
+Les valeurs affichées peuvent être de tout type, mais la concaténation doit respecter les types.
