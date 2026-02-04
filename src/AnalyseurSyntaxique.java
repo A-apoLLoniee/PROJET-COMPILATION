@@ -9,8 +9,10 @@ public class AnalyseurSyntaxique {
     private NoeudAST arbreSyntaxique;
     private List<String> erreursSyntaxiques;
 
-    public AnalyseurSyntaxique(analyseurLexical analyseur) {
+    public AnalyseurSyntaxique(analyseurLexical analyseur) throws IOException {
         this.analyseur = analyseur;
+        // Lire le premier token
+        analyseur.symboleSuivant();
         this.tokenCourant = analyseur.getSymboleCourant();
         this.arbreSyntaxique = new NoeudAST(NoeudAST.TypeNoeud.PROGRAMME);
         this.erreursSyntaxiques = new ArrayList<>();
@@ -49,14 +51,34 @@ public class AnalyseurSyntaxique {
         System.err.println("   Token actuel: " + tokenCourant.nom);
     }
 
-    // Règle: PROGRAMME ::= [DIRECTIVE_LANGAGE] ALGORITHME DECLARATIONS DEBUT INSTRUCTIONS FIN
+    // Règle: PROGRAMME ::= DIRECTIVE_LANGAGE ALGORITHME DECLARATIONS DEBUT INSTRUCTIONS FIN
     private void programme() throws IOException {
-        // Directive de langage optionnelle
+        // Directive de langage OBLIGATOIRE
         if (verifier(TokenType.LANGAGE_TOKEN)) {
             NoeudAST directive = new NoeudAST(NoeudAST.TypeNoeud.DIRECTIVE_LANGAGE,
                     tokenCourant.nom, tokenCourant.ligne);
             arbreSyntaxique.ajouterEnfant(directive);
             avancer();
+        } else {
+            erreurSyntaxique("Directive de langage OBLIGATOIRE manquante (ex: #PYTHON, #JAVA, #C)");
+            System.err.println("ERREUR CRITIQUE : DIRECTIVE DE LANGAGE MANQUANTE");
+            System.err.println("\nVotre algorithme DOIT commencer par une directive de langage.");
+            System.err.println("\nExemples de directives valides :");
+            System.err.println("  • #PYTHON  → Pour générer du code Python");
+            System.err.println("  • #JAVA    → Pour générer du code Java");
+            System.err.println("  • #C       → Pour générer du code C");
+            System.err.println("\nFormat attendu de votre fichier :");
+            System.err.println("┌─────────────────────────────────");
+            System.err.println("│ #PYTHON");
+            System.err.println("│ algorithme MonAlgorithme");
+            System.err.println("│ var");
+            System.err.println("│   x : entier;");
+            System.err.println("│ debut");
+            System.err.println("│   ...");
+            System.err.println("│ fin");
+            System.err.println("└─────────────────────────────────");
+            System.err.println("\n⚠️  Ajoutez la directive au début de votre fichier et réessayez.\n");
+            return;
         }
 
         // ALGORITHME [nom]
@@ -219,8 +241,6 @@ public class AnalyseurSyntaxique {
         parent.ajouterEnfant(decl);
     }
 
-    // Règle: DECL_FONCTION ::= FONCTION IDENTIFICATEUR ( [PARAMETRES] ) : TYPE
-    //                           [SECTION_VAR] DEBUT INSTRUCTIONS RETOUR [EXPRESSION] FINFONCTION
     // Règle: DECL_FONCTION ::= FONCTION IDENTIFICATEUR ( [PARAMETRES] ) : TYPE
 //                          [SECTION_VAR] DEBUT INSTRUCTIONS RETOUR [EXPRESSION] FINFONCTION
     private void declarationFonction() throws IOException {

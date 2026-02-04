@@ -80,6 +80,7 @@ public class analyseurLexical {
     private SymboleCourant symCourant; // Token courant
     private int numLigne; // Numéro de ligne actuel
     private String langageCible; // Langage cible (#JAVA, #PYTHON, etc.)
+    private boolean directiveLue; // Flag pour savoir si la directive a déjà été lue
 
     // Tables de correspondance
     private Map<String, TokenType> tableMotsCles; // Mots-clés → TokenType
@@ -90,13 +91,14 @@ public class analyseurLexical {
         this.symCourant = new SymboleCourant();
         this.numLigne = 1;
         this.langageCible = null;
+        this.directiveLue = false;
 
         initialiserMotsCles();
         initialiserTableErreurs();
 
         lireCaractere();
-        // Initialiser le premier token
-        symboleSuivant();
+        // NE PAS initialiser le premier token ici
+        // symboleSuivant();
     }
 
     private void initialiserMotsCles() {
@@ -276,6 +278,7 @@ public class analyseurLexical {
 
         // Extraire et sauvegarder le langage cible
         langageCible = directiveStr.substring(1).toUpperCase();
+        directiveLue = true;
 
         // Vérifier que le langage est supporté
         Set<String> langagesSuportes = new HashSet<>(Arrays.asList("PYTHON", "JAVA", "C"));

@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 public class Main {
     public static void main(String[] args) throws Exception {
         try {
-            String nomFichierSource = "testGlobal.txt";
+            String nomFichierSource = "test1_base.txt";
             // Options disponibles :
             // - test1_base.txt
             // - test2_boucles.txt

@@ -140,59 +140,35 @@ public class NoeudAST {
         return sb.toString();
     }
 
-    // Méthode pour afficher l'arbre sous forme graphique ASCII
+    // Méthode pour afficher l'arbre sous forme graphique ASCII améliorée
     public String toStringArbre() {
-        return toStringArbre(0, new ArrayList<>());
+        return toStringArbre("", true, new StringBuilder()).toString();
     }
 
-    private String toStringArbre(int niveau, List<Boolean> derniers) {
-        StringBuilder sb = new StringBuilder();
+    private StringBuilder toStringArbre(String prefix, boolean estDernier, StringBuilder sb) {
+        // Afficher le nœud courant avec son préfixe
+        sb.append(prefix);
+        sb.append(estDernier ? "└── " : "├── ");
 
-        // Ajouter les branches verticales
-        for (int i = 0; i < niveau - 1; i++) {
-            if (i < derniers.size() && derniers.get(i)) {
-                sb.append("  ");
-            } else {
-                sb.append("  ");
-            }
-        }
-
-        // Ajouter la branche finale
-        if (niveau > 0) {
-            if (derniers.size() > niveau - 1 && derniers.get(niveau - 1)) {
-                sb.append(" ");
-            } else {
-                sb.append(" ");
-            }
-        }
-
-        // Ajouter le type et la valeur
+        // Afficher le type
         sb.append(type);
+
+        // Afficher la valeur si elle existe
         if (!valeur.isEmpty()) {
-            sb.append(": ").append(valeur);
+            sb.append(": \"").append(valeur).append("\"");
         }
-        sb.append(" (l.").append(ligne).append(")");
 
-        // Ajouter les enfants
+        // Afficher la ligne
+        sb.append(" (ligne ").append(ligne).append(")");
+        sb.append("\n");
+
+        // Afficher les enfants
         for (int i = 0; i < enfants.size(); i++) {
-            sb.append("\n");
-            if (niveau > 0) {
-                if (derniers.size() > niveau) {
-                    derniers.set(niveau, i == enfants.size() - 1);
-                } else {
-                    derniers.add(niveau, i == enfants.size() - 1);
-                }
-            } else {
-                if (derniers.isEmpty()) {
-                    derniers.add(i == enfants.size() - 1);
-                } else {
-                    derniers.set(0, i == enfants.size() - 1);
-                }
-            }
-            sb.append(enfants.get(i).toStringArbre(niveau + 1, derniers));
+            String nouveauPrefix = prefix + (estDernier ? "    " : "│   ");
+            enfants.get(i).toStringArbre(nouveauPrefix, i == enfants.size() - 1, sb);
         }
 
-        return sb.toString();
+        return sb;
     }
 
     // Méthode pour générer une représentation JSON de l'arbre (utile pour des outils de visualisation)
