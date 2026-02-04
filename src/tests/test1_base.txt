@@ -1,10 +1,32 @@
 #PYTHON
-ALGORITHME TestBase
+ALGORITHME CalculateurSimple
 VAR
-    a, b, somme : entier;
+    a, b, somme, difference, produit : entier;
+    x, y : reel;
 DEBUT
     a <- 10
     b <- 20
     somme <- a + b
     ECRIRE "Somme = ", somme
+
+    a <- -15
+    b <- -8
+    somme <- a + b
+    difference <- a - b
+    produit <- a * b
+
+    ECRIRE "a = ", a
+    ECRIRE "b = ", b
+    ECRIRE "a + b = ", somme
+    ECRIRE "a - b = ", difference
+    ECRIRE "a * b = ", produit
+
+    a <- 25
+    b <- -10
+    somme <- a + b
+    ECRIRE a, " + ", b, " = ", somme
+
+    x <- -7.5
+    y <- 3.2
+    ECRIRE x, " + ", y, " = ", x + y
 FIN

@@ -1,16 +1,16 @@
 #PYTHON
-ALGORITHME TestBoucles
+ALGORITHME GestionBoucles
 VAR
     i, j, somme, produit : entier;
 DEBUT
-    // Boucle POUR
+    // Boucle POUR avec positifs
     somme <- 0
     POUR i <- 1 JUSQUA 5 FAIRE
         somme <- somme + i
     FINPOUR
     ECRIRE "Somme 1-5 = ", somme
-    
-    // Boucle TANTQUE
+
+    // Boucle TANTQUE pour factorielle
     i <- 1
     produit <- 1
     TANTQUE i <= 5 FAIRE
@@ -18,11 +18,18 @@ DEBUT
         i <- i + 1
     FINTANTQUE
     ECRIRE "Factorielle 5 = ", produit
-    
+
     // Boucle REPETER
     j <- 0
     REPETER
-        ECRIRE "Répétition ", j
+        ECRIRE "Itération ", j
         j <- j + 1
     JUSQUA j = 3
+
+    // Boucle avec nombres négatifs
+    i <- 5
+    TANTQUE i > -3 FAIRE
+        ECRIRE "Valeur : ", i
+        i <- i - 2
+    FINTANTQUE
 FIN

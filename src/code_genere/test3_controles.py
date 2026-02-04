@@ -1,5 +1,6 @@
 x = 0
 y = 0
+nombre = 0
 estVrai = False
 condition = False
 x = 15
@@ -14,3 +15,12 @@ estVrai = True
 condition = ((x > 10) and estVrai)
 if condition:
     print("Condition complexe vraie", sep="")
+nombre = -15
+if (nombre < 0):
+    print(str(nombre), " est négatif", sep="")
+else:
+    print(str(nombre), " est positif ou nul", sep="")
+x = -10
+y = -20
+if (x > y):
+    print(str(x), " est plus grand que ", str(y), sep="")

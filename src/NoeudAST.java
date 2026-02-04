@@ -44,8 +44,7 @@ public class NoeudAST {
         LISTE_ARGUMENTS("ListeArguments"),
 
         // Spécial
-        LISTE_IDENTIFICATEURS("ListeIdentificateurs"),
-        CONDITION_EXPRESSION("ConditionExpression");
+        LISTE_IDENTIFICATEURS("ListeIdentificateurs");
 
         private final String nom;
 

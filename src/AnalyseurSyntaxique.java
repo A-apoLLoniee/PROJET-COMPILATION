@@ -88,7 +88,7 @@ public class AnalyseurSyntaxique {
             if (!verifier(TokenType.ID_TOKEN)) {
                 erreurSyntaxique("Nom d'algorithme attendu");
             } else {
-                arbreSyntaxique.setValeur(tokenCourant.nom); // Stocker le nom de l'algorithme
+                arbreSyntaxique.setValeur(tokenCourant.nom);
                 avancer(); // nom de l'algorithme
             }
         } else {

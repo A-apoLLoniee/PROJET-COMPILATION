@@ -1,5 +1,5 @@
 #PYTHON
-ALGORITHME TestStructures
+ALGORITHME GestionStructures
 
 STRUCTURE Point
     x : reel;
@@ -24,15 +24,20 @@ DEBUT
     RETOUR 2 * (rect.largeur + rect.hauteur)
 FINFONCTION
 
+FONCTION calculerAire(rect : Rectangle) : reel
+DEBUT
+    RETOUR rect.largeur * rect.hauteur
+FINFONCTION
+
 VAR
     p1, p2 : Point;
     rect : Rectangle;
     etud : Etudiant;
-    perimetre : reel;
+    perimetre, aire : reel;
     i : entier;
 
 DEBUT
-    // Initialisation des points
+    // Points avec coordonnées positives
     p1.x <- 0.0
     p1.y <- 0.0
 
@@ -42,18 +47,19 @@ DEBUT
     ECRIRE "Point 1 : (", p1.x, ", ", p1.y, ")"
     ECRIRE "Point 2 : (", p2.x, ", ", p2.y, ")"
 
-    // Initialisation du rectangle
+    // Rectangle
     rect.coinSupGauche <- p1
     rect.largeur <- 10.5
     rect.hauteur <- 5.2
 
     ECRIRE "Rectangle : largeur=", rect.largeur, ", hauteur=", rect.hauteur
 
-    // Calcul du périmètre
     perimetre <- calculerPerimetre(rect)
+    aire <- calculerAire(rect)
     ECRIRE "Périmètre = ", perimetre
+    ECRIRE "Aire = ", aire
 
-    // Initialisation de l'étudiant
+    // Étudiant
     etud.nom <- "Alice"
     etud.age <- 20
     etud.actif <- VRAI
@@ -70,4 +76,9 @@ DEBUT
     POUR i <- 0 JUSQUA 2 FAIRE
         ECRIRE "  Note ", i, " = ", etud.notes[i]
     FINPOUR
+
+    // Point avec coordonnées négatives
+    p1.x <- -5.5
+    p1.y <- -3.2
+    ECRIRE "Point négatif : (", p1.x, ", ", p1.y, ")"
 FIN

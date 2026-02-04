@@ -916,13 +916,11 @@ public class AnalyseurSemantique {
             case APPEL_FONCTION:
                 return analyserAppelFonctionExpression(expression);
 
-            case CONDITION_EXPRESSION:
-                return analyserConditionExpression(expression);
 
             case CHAINE:
                 return TypeDonnee.CHAINE;
 
-            case ACCES_CHAMP:  // CORRECTION: Ajouter ce cas
+            case ACCES_CHAMP:
                 return analyserAccesChampExpression(expression);
 
             default:

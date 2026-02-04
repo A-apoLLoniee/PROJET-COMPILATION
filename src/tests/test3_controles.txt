@@ -1,7 +1,7 @@
 #PYTHON
-ALGORITHME TestControles
+ALGORITHME StructuresDecision
 VAR
-    x, y : entier;
+    x, y, nombre : entier;
     estVrai, condition : booleen;
 DEBUT
     x <- 15
@@ -24,5 +24,19 @@ DEBUT
     condition <- (x > 10) ET estVrai
     SI condition ALORS
         ECRIRE "Condition complexe vraie"
+    FINSI
+
+    // Conditions avec nombres négatifs
+    nombre <- -15
+    SI nombre < 0 ALORS
+        ECRIRE nombre, " est négatif"
+    SINON
+        ECRIRE nombre, " est positif ou nul"
+    FINSI
+
+    x <- -10
+    y <- -20
+    SI x > y ALORS
+        ECRIRE x, " est plus grand que ", y
     FINSI
 FIN

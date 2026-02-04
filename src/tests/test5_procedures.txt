@@ -1,12 +1,12 @@
 #PYTHON
-ALGORITHME TestProcedures
+ALGORITHME GestionProcedures
 VAR
     nombre : entier;
     message : chaine;
 
 PROCEDURE afficherMessage(msg : chaine)
 DEBUT
-    ECRIRE "Message reçu : ", msg
+    ECRIRE "Message : ", msg
 FINPROCEDURE
 
 PROCEDURE afficherTableMulti(n : entier)
@@ -19,10 +19,30 @@ DEBUT
     FINPOUR
 FINPROCEDURE
 
+PROCEDURE analyserNombre(n : entier)
 DEBUT
-    message <- "Test des procédures"
+    SI n > 0 ALORS
+        ECRIRE n, " est positif"
+    SINON
+        SI n < 0 ALORS
+            ECRIRE n, " est négatif"
+        SINON
+            ECRIRE "Le nombre est zéro"
+        FINSI
+    FINSI
+FINPROCEDURE
+
+DEBUT
+    message <- "Bienvenue"
     afficherMessage(message)
 
     nombre <- 7
     afficherTableMulti(nombre)
+
+    nombre <- -5
+    afficherTableMulti(nombre)
+
+    analyserNombre(15)
+    analyserNombre(-8)
+    analyserNombre(0)
 FIN

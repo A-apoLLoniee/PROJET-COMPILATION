@@ -14,7 +14,11 @@ while (i <= 5):
 print("Factorielle 5 = ", str(produit), sep="")
 j = 0
 while True:
-    print("Répétition ", str(j), sep="")
+    print("Itération ", str(j), sep="")
     j = (j + 1)
     if (j == 3):
         break
+i = 5
+while (i > -3):
+    print("Valeur : ", str(i), sep="")
+    i = (i - 2)
